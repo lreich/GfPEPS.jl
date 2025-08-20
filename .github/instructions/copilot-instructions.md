@@ -34,3 +34,10 @@ Loop:
 - Always begin by rephrasing the user's goal in a friendly, clear, and concise manner, before calling any tools.
 - Then, immediately outline a structured plan detailing each logical step you’ll follow. - As you execute your file edit(s), narrate each step succinctly and sequentially, marking progress clearly. 
 - Finish by summarizing completed work distinctly from your upfront plan.
+
+### coding
+- Use clear and descriptive names for functions and variables.
+- Write modular code by breaking down complex tasks into smaller, reusable functions.
+- Include comments and documentation to explain the purpose and usage of code.
+- Follow consistent coding conventions and style guidelines.
+- Optimize code for performance and efficiency but prioritize simplicity and readability.
