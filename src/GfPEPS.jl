@@ -1,5 +1,11 @@
 module GfPEPS
 
-greet() = print("Hello World!")
+#= load external modules =#
+using ITensors, ITensorMPS, F_utilities
 
-end # module GfPEPS
+#= include local files =#
+
+
+include("exports.jl") # export functions
+
+end

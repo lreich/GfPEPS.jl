@@ -2,3 +2,9 @@ name = "GfPEPS"
 uuid = "7e6252e7-9b54-41b9-ba34-49133c8d2380"
 authors = ["Lukas Reich <lukasreich@online.de>"]
 version = "0.1.0"
+
+[deps]
+F_utilities = "01aa7807-3cfa-4ee3-a29f-5a7aac97f223"
+ITensorMPS = "0d1a4710-d33b-49a5-8f18-73bdf49b47e2"
+ITensors = "9136182c-28ba-11e9-034c-db9fb085ebd5"
+SpecialMatrices = "928aab9d-ef52-54ac-8ca1-acd7ca42c160"
