@@ -16,6 +16,8 @@ function SingleGammaIn(k::Real)
             ct z z z]
 end
 
+SingleGammaIn(pi)
+
 """
     NvGammaIn(k, Nv)
 Direct sum of SingleGammaIn, repeated Nv times.
@@ -29,6 +31,8 @@ function NvGammaIn(k::Real, Nv::Integer)
     end
     return out
 end
+
+NvGammaIn(pi,2)
 
 """
     GammaIn(k::AbstractVector, Nv)

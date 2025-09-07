@@ -1,9 +1,16 @@
-export getGammaProjector, J, GammaProjector, getABD, unitarize
-export SingleGammaIn, NvGammaIn, GammaIn, BatchK, BatchGammaIn
-export GaussianLinearMap
-export exact_energy_k, eg
-export energy_function, optimize_runtime_loss
-export measure
-export initialT, savelog_trivial
-export solve_mu
-export gaussian_fpeps
+#= Hamiltonian functions =#
+export get_2D_k_grid
+export exact_energy_BCS_k
+export exact_energy_BCS_k_average
+
+#= Gaussian map functions =#
+export GaussianMap
+
+#= loss functions =#
+export optimize_loss
+
+#= export global variables =#
+const root = normpath(joinpath(@__DIR__, ".."))
+const config_path = joinpath(root, "conf")
+export root
+export config_path

@@ -1,20 +1,17 @@
 module GfPEPS
 
 #= load external modules =#
-using ITensors, ITensorMPS, F_utilities
-using LinearAlgebra, Statistics
+using LinearAlgebra
+using BlockDiagonals
+using ITensors, ITensorMPS
+using SparseArrays
+# using F_utilities
 
 #= include local files =#
-
-include("lib/ABD.jl")
-include("lib/Gin.jl")
-include("lib/GaussianLinearMap.jl")
-include("lib/exact.jl")
-include("lib/deltatomu.jl")
+include("lib/helperFunctions.jl")
+include("lib/hamiltonian.jl")
+include("lib/GaussianMap.jl")
 include("lib/loss.jl")
-include("lib/measure.jl")
-include("lib/loadwrite.jl")
-include("lib/gaussian_fpeps.jl")
 
 include("exports.jl") # export functions
 

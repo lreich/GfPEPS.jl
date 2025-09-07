@@ -1,5 +1,6 @@
 mutable struct Gaussian_fPEPS
-    N_majoranas::Int # number of virtual majoranas
+    Nf::Int # number of physical fermions
+    Nv::Int # number of virtual fermions
 
     # lattice size 
     Lx::Int # horizontal extent 
@@ -18,7 +19,7 @@ mutable struct Gaussian_fPEPS
     # GfPEPS tensors
     tensors::Matrix{ITensor}
 
-    function Gaussian_fPEPS(;N_majoranas::Int=4)
+    function Gaussian_fPEPS(;Nv::Int=4)
         # return new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, zeros(ITensor, 0, 0))
     end
 end
