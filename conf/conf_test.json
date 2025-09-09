@@ -1,21 +1,21 @@
 {
     "params":{
         "N_physical_fermions_on_site": 2,
-        "N_virtual_fermions_on_bond": 2,
+        "N_virtual_fermions_on_bond": 3,
         "seed": 1234
     },
 
     "system_params":{
-        "Lx": 101,
-        "Ly": 101,
+        "Lx": 5,
+        "Ly": 5,
         "lattice_type": "square"
     },
 
     "hamiltonian":{
         "t": 1.0,
-        "Δ_x": 1.0,
-        "Δ_y": 2.0,
-        "μ": 3.0 , 
+        "Δ_x": 0.0,
+        "Δ_y": 0.0,
+        "μ": 0.0 , 
         "hole_density": 0.0,
         "μ_from_hole_density": false
     },

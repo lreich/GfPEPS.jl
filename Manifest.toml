@@ -2,7 +2,7 @@
 
 julia_version = "1.10.10"
 manifest_format = "2.0"
-project_hash = "820b9c5922a054af9838e993e3c841a81621313b"
+project_hash = "d181d1d57503176be8a29fce4dac000c9b5010fb"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "60665b326b75db6517939d0e1875850bc4a54368"
@@ -317,6 +317,11 @@ deps = ["ColorTypes", "FixedPointNumbers", "Reexport"]
 git-tree-sha1 = "37ea44092930b1811e666c3bc38065d7d87fcc74"
 uuid = "5ae59095-9a9b-59fe-a467-6f913c188581"
 version = "0.13.1"
+
+[[deps.CommonSolve]]
+git-tree-sha1 = "0eee5eb66b1cf62cd6ad1b460238e60e4b09400c"
+uuid = "38540f10-b2f7-11e9-35d8-d573e4eb0ff2"
+version = "0.2.4"
 
 [[deps.CommonSubexpressions]]
 deps = ["MacroTools"]
@@ -1265,6 +1270,28 @@ deps = ["LinearAlgebra"]
 git-tree-sha1 = "48f038bfd83344065434089c2a79417f38715c41"
 uuid = "708f8203-808e-40c0-ba2d-98a6953ed40d"
 version = "1.4.2"
+
+[[deps.Roots]]
+deps = ["Accessors", "CommonSolve", "Printf"]
+git-tree-sha1 = "8a433b1ede5e9be9a7ba5b1cc6698daa8d718f1d"
+uuid = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"
+version = "2.2.10"
+
+    [deps.Roots.extensions]
+    RootsChainRulesCoreExt = "ChainRulesCore"
+    RootsForwardDiffExt = "ForwardDiff"
+    RootsIntervalRootFindingExt = "IntervalRootFinding"
+    RootsSymPyExt = "SymPy"
+    RootsSymPyPythonCallExt = "SymPyPythonCall"
+    RootsUnitfulExt = "Unitful"
+
+    [deps.Roots.weakdeps]
+    ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+    ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+    IntervalRootFinding = "d2bf35a9-74e0-55ec-b149-d360ff49b807"
+    SymPy = "24249f21-da20-56a4-8eb1-6a02cf4ae2e6"
+    SymPyPythonCall = "bc8888f7-b21e-4b7c-a06a-5d9c9496438c"
+    Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [[deps.SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"

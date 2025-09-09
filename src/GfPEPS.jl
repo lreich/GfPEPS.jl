@@ -9,6 +9,7 @@ using SparseArrays
 
 #= include local files =#
 include("lib/helperFunctions.jl")
+include("lib/brillouinZone.jl")
 include("lib/hamiltonian.jl")
 include("lib/GaussianMap.jl")
 include("lib/loss.jl")

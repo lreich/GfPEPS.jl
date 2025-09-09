@@ -30,6 +30,16 @@ function energy_loss(t::Real, Δ_x::Real, Δ_y::Real, μ::Real, Lx::Int, Ly::Int
         # return @views real(sum( ξk .* (1 .- 1/2 .* ( CM_out[:,1,3] .+ CM_out[:,2,4])) .+
         #                 batch_delta .* (CM_out[:,1,4] .+ CM_out[:,3,2]) ) ./ N)
 
+        # The following implementations are based on the exact formulas from the user-provided paper,
+        # translated into the code's specific basis ordering.
+        # Deduced Code Basis: (c_k,↑, c_k,↓, c†_{-k,↑}, c†_{-k,↓})
+        # Paper's Basis (assumed): (c_k,↑, c†_{-k,↑}, c_k,↓, c†_{-k,↓})
+        # Density calculation using the paper's formula translated to the code's basis:
+        # Paper: n_up = 0.5 - 0.5 * G_paper[1,2]; n_down = 0.5 - 0.5 * G_paper[3,4]
+        # Translated: n_up = 0.5 - 0.5 * G_code[1,3]; n_down = 0.5 - 0.5 * G_code[2,4]
+        # Pairing correlator (kappa) using the paper's formula translated to the code's basis:
+        # Paper: κ = 0.25 * [G_paper[1,4] + G_paper[2,3] + i*(G_paper[2,4] - G_paper[1,3])]
+        # Translated: κ = 0.25 * [G_code[1,4] + G_code[3,2] + i*(G_code[3,4] - G_code[1,2])]
         @views v13 = CM_out[:, 1, 3]
         @views v24 = CM_out[:, 2, 4]
         @views v14 = CM_out[:, 1, 4]
@@ -99,8 +109,8 @@ function optimize_loss(t::Real, Δ_x::Real, Δ_y::Real, μ::Real, Lx::Int, Ly::I
     G_in = G_in_Fourier(Lx, Ly, Nv)
     energy = energy_loss(t, Δ_x, Δ_y, μ, Lx, Ly)
     function loss(X)
-        CM_out = GaussianMap(Γ_fiducial(X, Nv), G_in, Nf, Nv)
-        return real(energy(CM_out))
+        # CM_out = GaussianMap(Γ_fiducial(X, Nv), G_in, Nf, Nv)
+        return real(energy(GaussianMap(Γ_fiducial(X, Nv), G_in, Nf, Nv)))
     end
     return loss
 end
