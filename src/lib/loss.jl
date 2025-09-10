@@ -2,17 +2,11 @@
     energy_loss(t::Real, Δ_x::Real, Δ_y::Real, μ::Real, bz::BrillouinZone2D)
 Return a function energy(BatchGout) computing the mean energy density.
 """
-
-# TODO: different BCS cases implementieren
-function energy_loss(t::Real, Δ_x::Real, Δ_y::Real, μ::Real, bz::BrillouinZone2D)
+function energy_loss(t::Real, μ::Real, bz::BrillouinZone2D, pairing_type::String, Δ_kwargs...)
     k_vals = bz.kvals
 
-    ξk = -2t * (cos.(k_vals[:,1]) .+ cos.(k_vals[:,2])) .+ μ 
-    Δk =  2 .* (Δ_x .* cos.(k_vals[:,1]) .+ Δ_y .* cos.(k_vals[:,2]))  
-
-    cosk   = cos.(k_vals)                    # N×2
-    batch_cosk  = vec(sum(cosk; dims=2))     # N
-    batch_delta = Δ_x .* cosk[:, 1] .+ Δ_y .* cosk[:, 2]  # N
+    ξk_batched = ξ.(eachrow(k_vals),t,μ)
+    Δk_batched = Δ.(pairing_type, eachrow(k_vals),Δ_kwargs...)
 
     N = size(k_vals, 1)  # number of k-points
 
@@ -34,28 +28,13 @@ function energy_loss(t::Real, Δ_x::Real, Δ_y::Real, μ::Real, bz::BrillouinZon
         # Pairing correlator (kappa) using the paper's formula translated to the code's basis:
         # Paper: κ = 0.25 * [G_paper[1,4] + G_paper[2,3] + i*(G_paper[2,4] - G_paper[1,3])]
         # Translated: κ = 0.25 * [G_code[1,4] + G_code[3,2] + i*(G_code[3,4] - G_code[1,2])]
-        @views v13 = CM_out[:, 1, 3]
-        @views v24 = CM_out[:, 2, 4]
-        @views v14 = CM_out[:, 1, 4]
-        @views v32 = CM_out[:, 3, 2]
+        @views G13 = CM_out[:, 1, 3]
+        @views G24 = CM_out[:, 2, 4]
+        @views G14 = CM_out[:, 1, 4]
+        @views G32 = CM_out[:, 3, 2]
 
-        # display(CM_out)
-
-        # display(v13)
-        # display(v24)
-        # display(v14)
-        # display(v32)
-        # display(batch_delta)
-
-        # algebraic rearrangement to avoid intermediate vectors:
-        # sum( ξk .* (1 - 0.5*(v13+v24)) ) = sum(ξk) - 0.5*(dot(ξk,v13) + dot(ξk,v24))
-        # sξ  = sum(ξk)
-        # t1  = dot(ξk, v13)
-        # t2  = dot(ξk, v24)
-        # d1  = dot(batch_delta, v14)
-        # d2  = dot(batch_delta, v32)
-
-        @inbounds E = sum(ξk) - 0.5*(dot(ξk, v13) + dot(ξk, v24)) + (dot(batch_delta, v14) + dot(batch_delta, v32))
+        # @inbounds E = sum(ξk) - 0.5*(dot(ξk, G13) + dot(ξk, G24)) + 1/2 * (dot(Δk, G14) + dot(Δk, G32))
+        @inbounds E = sum(ξk_batched) - 0.5*(dot(ξk_batched, G13) + dot(ξk_batched, G24)) + 1/2 * (dot(Δk_batched, G14) + dot(Δk_batched, G32))
         return real(E / N)
 
         # # expect CM_out :: N×4×4 (not Vector{Matrix})
@@ -107,9 +86,9 @@ end
 
 Returns the energy from the CM_out as a function of the orthogonal matrix X, obtained from the minimization, using the Gaussian map.
 """
-function optimize_loss(t::Real, Δ_x::Real, Δ_y::Real, μ::Real, bz::BrillouinZone2D, Nf::Int, Nv::Int)
+function optimize_loss(t::Real, μ::Real, bz::BrillouinZone2D, Nf::Int, Nv::Int, pairing_type::String, Δ_kwargs...)
     G_in = G_in_Fourier(bz, Nv)
-    energy = energy_loss(t, Δ_x, Δ_y, μ, bz)
+    energy = energy_loss(t, μ, bz, pairing_type, Δ_kwargs...)
     function loss(X)
         # CM_out = GaussianMap(Γ_fiducial(X, Nv), G_in, Nf, Nv)
         return real(energy(GaussianMap(Γ_fiducial(X, Nv), G_in, Nf, Nv)))

@@ -2,9 +2,7 @@
 export BrillouinZone2D
 
 #= Hamiltonian functions =#
-export get_2D_k_grid
 export exact_energy_BCS_k
-export exact_energy_BCS_k_average
 
 #= Gaussian map functions =#
 export GaussianMap

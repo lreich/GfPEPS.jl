@@ -1,7 +1,7 @@
 {
     "params":{
         "N_physical_fermions_on_site": 2,
-        "N_virtual_fermions_on_bond": 3,
+        "N_virtual_fermions_on_bond": 5,
         "seed": 1234,
         "maxiter": 5000,
         "grad_tol": 1e-7
@@ -18,9 +18,9 @@
 
     "hamiltonian":{
         "t": 1.0,
-        "Δ_x": 0.0,
-        "Δ_y": 0.0,
-        "μ": 0.0 , 
+        "Δ_x": 2.0,
+        "Δ_y": 3.0,
+        "μ": 2.0 , 
         "hole_density": 0.0,
         "μ_from_hole_density": false
     },

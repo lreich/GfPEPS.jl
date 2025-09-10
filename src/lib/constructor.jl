@@ -33,7 +33,7 @@ mutable struct Gaussian_fPEPS
         Ly = conf["system_params"]["Ly"]
         x_bc = Symbol(conf["system_params"]["x_bc"])
         y_bc = Symbol(conf["system_params"]["y_bc"])
-        pairing_type = Symbol(conf["system_params"]["pairing_type"])
+        pairing_type = conf["system_params"]["pairing_type"]
 
         bc = (x_bc, y_bc)
         # lattice_type = Symbol(conf["system_params"]["lattice_type"])
@@ -60,7 +60,7 @@ mutable struct Gaussian_fPEPS
         end
 
         # build loss function
-        loss = optimize_loss(t, Δ_x, Δ_y, μ, bz, Nf, Nv)
+        loss = optimize_loss(t, μ, bz, Nf, Nv, pairing_type, Δ_x, Δ_y)
 
         # build gradients
         g(x) = first(Zygote.gradient(loss, x))
@@ -74,7 +74,7 @@ mutable struct Gaussian_fPEPS
         ))
 
         @show Optim.minimum(res)
-        println("Exact energy:", exact_energy_BCS_k(bz,t,μ,Val(pairing_type),Δ_x,Δ_y))
+        println("Exact energy:", exact_energy_BCS_k(bz,t,μ,pairing_type,Δ_x,Δ_y))
 
         return new(
             Nf,
@@ -89,7 +89,7 @@ mutable struct Gaussian_fPEPS
             conf["params"]["grad_tol"],
             # zeros(ITensor, 0, 0),
             Optim.minimum(res),
-            exact_energy_BCS_k(bz,t,μ,Val(pairing_type),Δ_x,Δ_y)
+            exact_energy_BCS_k(bz,t,μ,pairing_type,Δ_x,Δ_y)
         )
     end
 end
