@@ -33,7 +33,7 @@ end
 Returns the exact ground state energy per site of a BCS mean field Hamiltonian over the Brillouin zone `bz`.
 """
 function exact_energy_BCS_k(bz::BrillouinZone2D, t::Real, μ::Real, pairing_type::String, Δ_kwargs...)
-    return mean(map(eachrow(bz.kvals)) do k
+    return mean(map(eachcol(bz.kvals)) do k
         ξ(k,t,μ) - E(k, t, μ, pairing_type, Δ_kwargs...)
     end)
 end
@@ -53,6 +53,22 @@ function exact_energy_BCS(T::Matrix,D::Matrix; )
 
     ε = eigvals(H)
     return sum(ε[ε .< 0])/2 + tr(T)/2
+end
+
+"""
+    has_dirac_points(bz::BrillouinZone2D, t::Real, μ::Real, pairing_type::String, Δ_kwargs...)
+
+Checks if there are Dirac points (zero-energy modes) in the energy spectrum over the Brillouin zone `bz`.
+"""
+function has_dirac_points(bz::BrillouinZone2D, t::Real, μ::Real, pairing_type::String, Δ_kwargs...)
+    dirac_point_found = false
+    for k in eachcol(bz.kvals)
+        if isapprox(E(k,t,μ,pairing_type,Δ_kwargs...), 0.0; atol = 1e-13)
+            @warn ("Dirac point found at k = $k. This may lead to convergence issues during optimization.")
+            dirac_point_found = true
+        end
+    end
+    return dirac_point_found
 end
 
 #======================================================================================

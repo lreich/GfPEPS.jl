@@ -5,10 +5,10 @@ Return a function energy(BatchGout) computing the mean energy density.
 function energy_loss(t::Real, μ::Real, bz::BrillouinZone2D, pairing_type::String, Δ_kwargs...)
     k_vals = bz.kvals
 
-    ξk_batched = ξ.(eachrow(k_vals),t,μ)
-    Δk_batched = Δ.(pairing_type, eachrow(k_vals),Δ_kwargs...)
+    ξk_batched = ξ.(eachcol(k_vals),t,μ)
+    Δk_batched = Δ.(pairing_type, eachcol(k_vals),Δ_kwargs...)
 
-    N = size(k_vals, 1)  # number of k-points
+    N = size(k_vals, 2)  # number of k-points
 
     # TODO: energy convention verstehen
     # μ = - μ in the paper formula

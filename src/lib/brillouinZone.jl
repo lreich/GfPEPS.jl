@@ -61,7 +61,7 @@ end
         get_2D_k_grid(Lx, Ly; x_periodic=Val(:APBC), shift_x=0.0, y_periodic=Val(:PBC),  shift_y=0.0)
 
 Create the 2D momentum grid from 1D k-values (with optional offsets) and
-return a meshgrid of the form: [[kx_1, ky_1]; 
+return a meshgrid of the form: transpose([[kx_1, ky_1]; 
                                 [kx_2, ky_1]; 
                                     ... 
                                 [kx_Lx, ky_1];
@@ -70,12 +70,12 @@ return a meshgrid of the form: [[kx_1, ky_1];
                                     ...
                                 [kx_Lx, ky_2];
                                     ...
-                                [kx_Lx, ky_Ly];
+                                [kx_Lx, ky_Ly]]);
 
 Returns
-- Matrix of size (Lx*Ly)×2 where:
-    - column 1 = vec(X) (kx repeated along rows)
-    - column 2 = vec(Y) (ky repeated along columns)
+- Matrix of size 2x(Lx*Ly) where:
+    - row 1 = kx vals
+    - row 2 = ky vals
 
 Notes
 - set the offsets, such that zero modes are avoided as those make the optimization of Γ harder.
@@ -87,23 +87,14 @@ function get_2D_k_grid(Lx::Int, Ly::Int;
     shift_y::Float64 = pi/2)
 
     # TODO: test with correct kvals but first take from paper to compare
-    # k_vals_x = sort(get_kvals(x_periodic, Lx) .+ shift_x)
-    # k_vals_y = sort(get_kvals(y_periodic, Ly) .+ shift_y)
+    k_vals_x = sort(get_kvals(x_periodic, Lx) .+ shift_x)
+    k_vals_y = sort(get_kvals(y_periodic, Ly) .+ shift_y)
 
-    # # create meshgrid
-    # KX = repeat([kx for kx in k_vals_x], Ly)
-    # KY = collect(Iterators.flatten(map(k_vals_y) do ky
-    #     repeat([ky],Lx)
-    # end))
+    # create meshgrid
+    KX = repeat([kx for kx in k_vals_x], Ly)
+    KY = collect(Iterators.flatten(map(k_vals_y) do ky
+        repeat([ky],Lx)
+    end))
 
-    # return hcat(KX,KY)
-
-    x = ((0:Lx-1) .- 0.5) ./ Lx
-    y = (0:Ly-1) ./ Ly
-    X = repeat(x', Ly, 1)      # (Ly, Lx), X[i,j] = x[j]
-    Y = repeat(y, 1, Lx)       # (Ly, Lx), Y[i,j] = y[i]
-    # row-major flatten to match NumPy/JAX
-    Xf = vec(permutedims(X))
-    Yf = vec(permutedims(Y))
-    return 2π .* hcat(Xf, Yf)  # (Ly*Lx, 2)
+    return hcat(KX,KY)'
 end
