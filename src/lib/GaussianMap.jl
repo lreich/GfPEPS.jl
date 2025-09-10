@@ -32,15 +32,15 @@ function G_in_single_k(k::AbstractVector{<:Real}, Nv::Integer)
 end
 
 """
-    G_in_Fourier(Lx::Int, Ly::Int, Nv::Int)
+    G_in_Fourier(bz::BrillouinZone2D, Nv::Int)
 
 Returns the Fourier transformed (F) covariance matrix of all the virtual bonds: G_in = F Γ_in F†
 
 """
-function G_in_Fourier(Lx::Int, Ly::Int, Nv::Int)
-    kvals = get_2D_k_grid(Lx,Ly)
+function G_in_Fourier(bz::BrillouinZone2D, Nv::Int)
+    kvals = bz.kvals
 
-    res = Array{ComplexF64}(undef, size(kvals,1), 8*Nv, 8*Nv)
+    res = Array{ComplexF64}(undef, size(kvals,2), 8*Nv, 8*Nv)
     for (i, row) in enumerate(eachcol(kvals))
         res[i, :, :] = G_in_single_k(row, Nv)
     end

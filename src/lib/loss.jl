@@ -1,11 +1,11 @@
 """
-    energy_function(t::Real, Δ_x::Real, Δ_y::Real, μ::Real, Lx::Int, Ly::Int)
+    energy_loss(t::Real, Δ_x::Real, Δ_y::Real, μ::Real, bz::BrillouinZone2D)
 Return a function energy(BatchGout) computing the mean energy density.
 """
 
 # TODO: different BCS cases implementieren
-function energy_loss(t::Real, Δ_x::Real, Δ_y::Real, μ::Real, Lx::Int, Ly::Int)
-    k_vals = get_2D_k_grid(Lx, Ly)
+function energy_loss(t::Real, Δ_x::Real, Δ_y::Real, μ::Real, bz::BrillouinZone2D)
+    k_vals = bz.kvals
 
     ξk = -2t * (cos.(k_vals[:,1]) .+ cos.(k_vals[:,2])) .+ μ 
     Δk =  2 .* (Δ_x .* cos.(k_vals[:,1]) .+ Δ_y .* cos.(k_vals[:,2]))  
@@ -105,9 +105,9 @@ end
 
 Returns the energy from the CM_out as a function of the orthogonal matrix X, obtained from the minimization, using the Gaussian map.
 """
-function optimize_loss(t::Real, Δ_x::Real, Δ_y::Real, μ::Real, Lx::Int, Ly::Int, Nf::Int, Nv::Int)
-    G_in = G_in_Fourier(Lx, Ly, Nv)
-    energy = energy_loss(t, Δ_x, Δ_y, μ, Lx, Ly)
+function optimize_loss(t::Real, Δ_x::Real, Δ_y::Real, μ::Real, bz::BrillouinZone2D, Nf::Int, Nv::Int)
+    G_in = G_in_Fourier(bz, Nv)
+    energy = energy_loss(t, Δ_x, Δ_y, μ, bz)
     function loss(X)
         # CM_out = GaussianMap(Γ_fiducial(X, Nv), G_in, Nf, Nv)
         return real(energy(GaussianMap(Γ_fiducial(X, Nv), G_in, Nf, Nv)))
