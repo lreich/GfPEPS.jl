@@ -14,13 +14,7 @@ function energy_loss(t::Real, Δ_x::Real, Δ_y::Real, μ::Real, bz::BrillouinZon
     batch_cosk  = vec(sum(cosk; dims=2))     # N
     batch_delta = Δ_x .* cosk[:, 1] .+ Δ_y .* cosk[:, 2]  # N
 
-    J = [0.0 -1.0; 1.0 0.0]
-    K = [0.0  1.0; 1.0 0.0]
-    N = size(k_vals, 1)
-
-    # make 2x2 kernels broadcast across batch dimension explicitly
-    J3 = reshape(J, 1, size(J)... )   # 1×2×2
-    K3 = reshape(K, 1, size(K)... )   # 1×2×2
+    N = size(k_vals, 1)  # number of k-points
 
     # TODO: energy convention verstehen
     # μ = - μ in the paper formula
@@ -44,6 +38,14 @@ function energy_loss(t::Real, Δ_x::Real, Δ_y::Real, μ::Real, bz::BrillouinZon
         @views v24 = CM_out[:, 2, 4]
         @views v14 = CM_out[:, 1, 4]
         @views v32 = CM_out[:, 3, 2]
+
+        # display(CM_out)
+
+        # display(v13)
+        # display(v24)
+        # display(v14)
+        # display(v32)
+        # display(batch_delta)
 
         # algebraic rearrangement to avoid intermediate vectors:
         # sum( ξk .* (1 - 0.5*(v13+v24)) ) = sum(ξk) - 0.5*(dot(ξk,v13) + dot(ξk,v24))

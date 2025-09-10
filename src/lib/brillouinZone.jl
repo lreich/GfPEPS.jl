@@ -105,5 +105,5 @@ function get_2D_k_grid(Lx::Int, Ly::Int;
     # row-major flatten to match NumPy/JAX
     Xf = vec(permutedims(X))
     Yf = vec(permutedims(Y))
-    return 2π .* hcat(Xf, Yf)'  # (Ly*Lx, 2)
+    return 2π .* hcat(Xf, Yf)  # (Ly*Lx, 2)
 end

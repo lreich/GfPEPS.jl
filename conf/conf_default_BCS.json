@@ -18,9 +18,9 @@
 
     "hamiltonian":{
         "t": 1.0,
-        "Δ_x": 1.0,
-        "Δ_y": 1.0,
-        "μ": 3.0 , 
+        "Δ_x": 0.0,
+        "Δ_y": 0.0,
+        "μ": 0.0 , 
         "hole_density": 0.0,
         "μ_from_hole_density": false
     },

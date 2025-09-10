@@ -40,8 +40,8 @@ Returns the Fourier transformed (F) covariance matrix of all the virtual bonds: 
 function G_in_Fourier(bz::BrillouinZone2D, Nv::Int)
     kvals = bz.kvals
 
-    res = Array{ComplexF64}(undef, size(kvals,2), 8*Nv, 8*Nv)
-    for (i, row) in enumerate(eachcol(kvals))
+    res = Array{ComplexF64}(undef, size(kvals,1), 8*Nv, 8*Nv)
+    for (i, row) in enumerate(eachrow(kvals))
         res[i, :, :] = G_in_single_k(row, Nv)
     end
     return res

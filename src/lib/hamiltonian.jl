@@ -21,7 +21,7 @@ end
 Returns the exact ground state energy per site of a BCS mean field Hamiltonian over the Brillouin zone `bz`.
 """
 function exact_energy_BCS_k(bz::BrillouinZone2D, t::Real, μ::Real, Δ_kwargs...)
-    return mean(map(eachcol(bz.kvals)) do k
+    return mean(map(eachrow(bz.kvals)) do k
         ξ(k,t,μ) - E(k, t, μ, Δ_kwargs...)
     end)
 end

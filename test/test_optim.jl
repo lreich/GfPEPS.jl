@@ -1,3 +1,4 @@
+using Revise
 using Test
 using GfPEPS
 
@@ -6,6 +7,6 @@ using GfPEPS
     @test res.optim_res ≈ res.exact_energy
 # end
 
-bz = BrillouinZone2D(4,4,(:APBC,:PBC))
+# bz = BrillouinZone2D(4,4,(:APBC,:PBC))
 
-G_in_Fourier(bz, 2)
+# G_in_Fourier(bz, 2)
