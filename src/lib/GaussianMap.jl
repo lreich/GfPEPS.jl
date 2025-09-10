@@ -1,5 +1,15 @@
-using LinearAlgebra
-using BlockDiagonals
+"""
+    ⊕(A::AbstractMatrix, n::Integer)
+
+repeat A ⊕ A ⊕ ... (n times) via kron
+
+"""
+function ⊕(A::AbstractMatrix, n::Integer)
+    @assert n >= 1
+
+    Id = Matrix{eltype(A)}(I, n, n)
+    return kron(Id, A)
+end
 
 #= Correlation matrix function for the virtual bonds (G_in / Γ_in) =#
 """
@@ -26,8 +36,6 @@ G_in_single_k(k, Nv) = [⊕_{i=1}^{Nv} G_in_single_k(kx)] ⊕ [⊕_{i=1}^{Nv} G_
 
 """
 function G_in_single_k(k::AbstractVector{<:Real}, Nv::Integer)
-    # return vcat( hcat(⊕(helper(k[1]), Nv), spzeros(4*Nv,4*Nv)), hcat(spzeros(4*Nv,4*Nv), ⊕(helper(k[2]), Nv)))
-
     return Matrix(BlockDiagonal([⊕(helper(k[1]), Nv),⊕(helper(k[2]), Nv)]))
 end
 
@@ -40,7 +48,7 @@ Returns the Fourier transformed (F) covariance matrix of all the virtual bonds: 
 function G_in_Fourier(bz::BrillouinZone2D, Nv::Int)
     kvals = bz.kvals
 
-    res = Array{ComplexF64}(undef, size(kvals,2), 8*Nv, 8*Nv)
+    res = Array{ComplexF64,3}(undef, size(kvals,2), 8*Nv, 8*Nv)
     for (i, col) in enumerate(eachcol(kvals))
         res[i, :, :] = G_in_single_k(col, Nv)
     end
@@ -48,19 +56,29 @@ function G_in_Fourier(bz::BrillouinZone2D, Nv::Int)
 end
 
 #= Correlation matrix function for the fiducial state (G_out / Γ_out) =#
+
+"""
+    build_J(Nv::Int)
+
+Construct the symplectic matrix J for 4*Nv+2 modes.
+"""
+function build_J(Nv::Int,Nf::Int)
+    return ⊕([0.0 1.0; -1.0 0.0], 4*Nv+Nf)
+end
+Zygote.@nograd build_J # constructing J is not something we need gradients through
+
 """
     Γ_fiducial(X::AbstractMatrix, Nv::Int)
 
 Construct the correlation matrix for the fiducial state A from orthogonal matrix X.
 
 Note:
-- X must be an orthogonal matrix: X * X' = I
+- X must be an orthogonal matrix: X * X' = I 
 - Γ_fiducial is either given in Fourier space or real space, depending on X
 """
-function Γ_fiducial(X::AbstractMatrix, Nv::Int)
-    @assert X*transpose(X) ≈ I "Input must be an orthogonal matrix"
-
-    return transpose(X) * ⊕([0.0 1.0; -1.0 0.0],4*Nv+2) * X
+function Γ_fiducial(X::AbstractMatrix, Nv::Int, Nf::Int)
+    # return transpose(X) * ⊕([0.0 1.0; -1.0 0.0],4*Nv+2) * X
+    return transpose(X) * build_J(Nv,Nf) * X
 end
 
 """
@@ -98,15 +116,11 @@ Note:
 # end
 
 function GaussianMap(CM_out::AbstractMatrix, CM_in::AbstractArray, Nf::Int, Nv::Int)
-    @assert CM_out^2 ≈ -I "CM_out must be a real antisymmetric matrix"
-
     # get block matrices from CM_out (=Γ_fiducial)
     A = CM_out[1:2*Nf, 1:2*Nf]
     B = CM_out[1:2*Nf, 2*Nf+1:end]
     D = CM_out[2*Nf+1:end, 2*Nf+1:end]
-    @assert size(A) == (2*Nf, 2*Nf)
-    @assert size(B) == (2*Nf, 8*Nv)
-    @assert size(D) == (8*Nv, 8*Nv)
+    Bt = transpose(B)
 
     # Gaussian map for each (kx,ky)
     # N = size(CM_in,1)      
@@ -117,55 +131,10 @@ function GaussianMap(CM_out::AbstractMatrix, CM_in::AbstractArray, Nf::Int, Nv::
     # return result
 
     # compute one output per k without mutating
-    mats = map(s -> B * ((D .+ s) \ transpose(B)) + A, eachslice(CM_in; dims=1))
-    # avoid splatting to prevent StackOverflow
-    out3 = reduce((X,Y) -> cat(X, Y; dims=3), mats)   # (2Nf)×(2Nf)×N
-    return permutedims(out3, (3, 1, 2))               # N×(2Nf)×(2Nf)
+    # mats = map(s -> B * ((D .+ s) \ transpose(B)) + A, eachslice(CM_in; dims=1))
+    # # avoid splatting to prevent StackOverflow
+    # out3 = reduce((X,Y) -> cat(X, Y; dims=3), mats)   # (2Nf)×(2Nf)×N
+    # return permutedims(out3, (3, 1, 2))               # N×(2Nf)×(2Nf)
+    mats = [B * ((D .+ s) \ Bt) .+ A for s in eachslice(CM_in; dims=1)]
+    return cat(mats...; dims=3) |> x -> permutedims(x, (3,1,2))
 end
-
-# function GaussianMap(CM_out::AbstractMatrix, CM_in::AbstractArray, Nf::Int, Nv::Int)
-#     # @assert CM_out^2 ≈ -I "CM_out must be a real antisymmetric matrix"
-
-#     # get block matrices from CM_out (=Γ_fiducial)
-#     A = CM_out[1:2*Nf, 1:2*Nf]
-#     B = CM_out[1:2*Nf, 2*Nf+1:end]
-#     D = CM_out[2*Nf+1:end, 2*Nf+1:end]
-#     # @assert size(A) == (2*Nf, 2*Nf)
-#     # @assert size(B) == (2*Nf, 8*Nv)
-#     # @assert size(D) == (8*Nv, 8*Nv)
-
-#     N = size(CM_in,1)  
-#     Bt = transpose(B)    
-
-#     # Ensure temporaries have an element type that can hold both CM_out and CM_in
-#     elty = promote_type(eltype(D), eltype(CM_in))
-#     nA = size(A,1)           # = 2Nf
-#     nD = size(D,1)           # = 8Nv
-
-#     out = Array{elty}(undef, N, nA, nA)
-
-#     # preallocated temporaries with promoted element type
-#     work = similar(D, elty)                     # will hold D + Gin (mutated by lu!)
-#     rhs  = similar(Bt, elty)                    # (nD x nA) RHS (transpose(B))
-#     tmp  = similar(A, elty)                     # (nA x nA) temporary for B * sol
-#     B_prom = convert(Matrix{elty}, B)           # convert B/A to promoted type once
-#     A_prom = convert(Matrix{elty}, A)
-#     Bt_prom = convert(Matrix{elty}, Bt)
-
-#     @inbounds for i in 1:N
-#         Gin = @view CM_in[i, :, :]        # view into input batch
-#         copyto!(work, convert(Matrix{elty}, D))  # work = D (promoted)
-#         work .+= Gin                      # work = D + Gin  (Gin may be complex)
-
-#         copyto!(rhs, Bt_prom)             # rhs = transpose(B) (promoted)
-#         lu = lu!(work)                    # factorize in-place; returns LU object
-#         sol = lu \ rhs                    # solves (D+Gin) \ transpose(B)
-
-#         mul!(tmp, B_prom, sol)            # tmp = B * sol  (reuses tmp storage)
-#         tmp .+= A_prom                    # tmp = B*sol + A
-
-#         @views out[i, :, :] .= tmp        # copy tmp into batch result
-#     end
-
-#     return out
-# end

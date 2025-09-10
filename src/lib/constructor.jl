@@ -66,12 +66,28 @@ mutable struct Gaussian_fPEPS
         g(x) = first(Zygote.gradient(loss, x))
         g!(G,x) = copyto!(G, g(x)) # better for optim
 
-        # optimize X
+        # First, find a better initial guess for X by solving for smaller system sizes (see: 10.1103/PhysRevLett.129.206401) 
+        @info "Finding better initial guess for X by solving smaller system sizes..."
+        Lx_init = 5
+        Ly_init = 5
+        bz_init = BrillouinZone2D(Lx_init,Ly_init,bc)
+        has_dirac_points(bz_init,t,μ,pairing_type,Δ_x,Δ_y) # warn if dirac points are present
+        loss = optimize_loss(t, μ, bz_init, Nf, Nv, pairing_type, Δ_x, Δ_y)
         res = Optim.optimize(loss, g!, X, Optim.ConjugateGradient(manifold=Optim.Stiefel()), Optim.Options(
             iterations = conf["params"]["maxiter"],
             g_tol = conf["params"]["grad_tol"],
             show_trace = true
         ))
+
+        # @info "Finding optimal X for full system size..."
+        # loss = optimize_loss(t, μ, bz, Nf, Nv, pairing_type, Δ_x, Δ_y)
+        # has_dirac_points(bz,t,μ,pairing_type,Δ_x,Δ_y) # warn if dirac points are present
+        # # optimize X for the full system size
+        # res = Optim.optimize(loss, g!, Optim.minimizer(res_init), Optim.ConjugateGradient(manifold=Optim.Stiefel()), Optim.Options(
+        #     iterations = conf["params"]["maxiter"],
+        #     g_tol = conf["params"]["grad_tol"],
+        #     show_trace = true
+        # ))
 
         @show Optim.minimum(res)
         println("Exact energy:", exact_energy_BCS_k(bz,t,μ,pairing_type,Δ_x,Δ_y))

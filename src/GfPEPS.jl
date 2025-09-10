@@ -7,12 +7,12 @@ using ITensors, ITensorMPS
 using SparseArrays
 using Optim
 using Zygote
+# using Enzyme
 using JSON: parsefile
 using Random
 # using F_utilities
 
 #= include local files =#
-include("lib/helperFunctions.jl")
 include("lib/brillouinZone.jl")
 include("lib/hamiltonian.jl")
 include("lib/GaussianMap.jl")
