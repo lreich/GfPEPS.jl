@@ -96,25 +96,6 @@ Note:
 - The covariance matrices are currently only Fourier transformed TODO: also do for real space / no translation inv systems
 
 """
-
-# function GaussianMap(CM_out::AbstractMatrix, CM_in::AbstractArray, Nf::Int, Nv::Int)
-#     @assert CM_out^2 ≈ -I "CM_out must be a real antisymmetric matrix"
-
-#     # get block matrices from CM_out (=Γ_fiducial)
-#     A = CM_out[1:2*Nf, 1:2*Nf]
-#     B = CM_out[1:2*Nf, 2*Nf+1:end]
-#     D = CM_out[2*Nf+1:end, 2*Nf+1:end]
-#     @assert size(A) == (2*Nf, 2*Nf)
-#     @assert size(B) == (2*Nf, 8*Nv)
-#     @assert size(D) == (8*Nv, 8*Nv)
-
-#     # Gaussian map for each (kx,ky)
-#     N = size(CM_in,1)      
-#     return map(1:N) do i
-#         return B * inv(D + (@view CM_in[i, :, :])) * transpose(B) + A
-#     end
-# end
-
 function GaussianMap(CM_out::AbstractMatrix, CM_in::AbstractArray, Nf::Int, Nv::Int)
     # get block matrices from CM_out (=Γ_fiducial)
     A = CM_out[1:2*Nf, 1:2*Nf]
@@ -123,19 +104,40 @@ function GaussianMap(CM_out::AbstractMatrix, CM_in::AbstractArray, Nf::Int, Nv::
     # Bt = transpose(B)
 
     # Gaussian map for each (kx,ky)
-    # N = size(CM_in,1)      
-    # result = Array{eltype(CM_in)}(undef, N, 2*Nf, 2*Nf)
-    # for i in 1:N
-    #     result[i, :, :] = B * inv(D + CM_in[i, :, :]) * transpose(B) + A
-    # end
-    # return result
-
-    # compute one output per k without mutating
-    # mats = map(s -> B * ((D .+ s) \ transpose(B)) + A, eachslice(CM_in; dims=1))
-    # # avoid splatting to prevent StackOverflow
-    # out3 = reduce((X,Y) -> cat(X, Y; dims=3), mats)   # (2Nf)×(2Nf)×N
-    # return permutedims(out3, (3, 1, 2))               # N×(2Nf)×(2Nf)
-    
     mats = map(s -> B * ((D .+ s) \ transpose(B)) .+ A, eachslice(CM_in; dims=1))
     return cat(mats...; dims=3) |> x -> permutedims(x, (3,1,2))
+end
+
+"""
+    get_parent_hamiltonian(Γ_out::AbstractMatrix, Nf::Int, Nv::Int)
+
+Given the output correlation matrix Γ_out, return the parent Hamiltonian in Dirac fermions.
+"""
+function get_parent_hamiltonian(Γ_out::AbstractMatrix, Nf::Int, Nv::Int)
+    # convert from majorana basis to complex fermion basis
+    Ω = [I(4*Nv + Nf) I(4*Nv + Nf);
+        im*I(4*Nv + Nf) -im*I(4*Nv + Nf)]
+
+    return -0.5im .* Ω' * Γ_out * Ω
+end
+
+function translate_to_PEPS(X::AbstractMatrix, Nf::Int, Nv::Int)
+    Γ_out = Γ_fiducial(X, Nv, Nf)
+    H = get_parent_hamiltonian(Γ_out, Nf, Nv)
+
+    @show size(H)
+
+    _, M = eigen(H)
+    # @assert det(M) ≈ -1.0 "Fiducial state has odd parity. Odd parity is currently not supported."
+
+    U = M[1:Nf+4Nv, 1:Nf+4Nv]
+    V = M[1:Nf+4Nv, Nf+4Nv+1:end]
+
+
+    @show size(U)
+    @show size(V)
+
+    -inv(U) * V
+
+
 end

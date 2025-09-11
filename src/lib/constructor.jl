@@ -5,6 +5,7 @@ mutable struct Gaussian_fPEPS
     # lattice size 
     Lx::Int # horizontal extent 
     Ly::Int # vertical extent
+    bz::BrillouinZone2D # Brillouin zone
 
     # quadratic Hamiltonian parameters
     t::Float64 # hopping amplitude
@@ -19,6 +20,7 @@ mutable struct Gaussian_fPEPS
     # tensors::Matrix{ITensor}
 
     # test
+    X_opt::Matrix{Float64}
     optim_res::Float64
     exact_energy::Float64
 
@@ -107,12 +109,14 @@ mutable struct Gaussian_fPEPS
             Nv,
             Lx,
             Ly,
+            bz,
             t,
             μ,
             Δ_options,
             conf["params"]["maxiter"],
             conf["params"]["grad_tol"],
             # zeros(ITensor, 0, 0),
+            Optim.minimizer(res),
             Optim.minimum(res),
             exact_energy_BCS_k(bz,t,μ,pairing_type,Δ_vec...)
         )
