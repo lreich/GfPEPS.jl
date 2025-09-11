@@ -1,16 +1,18 @@
 module GfPEPS
 
 #= load external modules =#
+using MKL
 using LinearAlgebra
 using BlockDiagonals
 using ITensors, ITensorMPS
-using SparseArrays
 using Optim
 using Zygote
 # using Enzyme
 using JSON: parsefile
 using Random
 # using F_utilities
+
+MKL.set_num_threads(Sys.CPU_THREADS) 
 
 #= include local files =#
 include("lib/brillouinZone.jl")

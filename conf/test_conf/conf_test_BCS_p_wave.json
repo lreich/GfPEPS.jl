@@ -1,25 +1,29 @@
 {
     "params":{
         "N_physical_fermions_on_site": 2,
-        "N_virtual_fermions_on_bond": 10,
+        "N_virtual_fermions_on_bond": 5,
         "seed": 1234,
         "maxiter": 500,
-        "grad_tol": 1e-7
+        "grad_tol": 1e-7,
+        "show_trace": false
     },
 
     "system_params":{
-        "Lx": 11,
-        "Ly": 11,
+        "Lx": 5,
+        "Ly": 5,
         "x_bc": "APBC",
         "y_bc": "PBC",
-        "lattice_type": "square",
-        "pairing_type": "d_wave"
+        "lattice_type": "square"
     },
 
     "hamiltonian":{
         "t": 1.0,
-        "Δ_x": 2.0,
-        "Δ_y": 3.0,
+        "Δ_options":
+            {
+                "pairing_type": "p_wave",
+                "Δ_x": 2.0,
+                "Δ_y": 3.0
+            },
         "μ": 2.0 , 
         "hole_density": 0.0,
         "μ_from_hole_density": false

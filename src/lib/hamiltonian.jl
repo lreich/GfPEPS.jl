@@ -20,7 +20,7 @@ function Δ(pairing_type::String, kwargs...)
 end
 Δ(::Val{:d_wave},k::AbstractVector{<:Real},Δ_x::Real,Δ_y::Real) = 2*(Δ_x*cos(k[1]) - Δ_y*cos(k[2]))
 Δ(::Val{:s_wave},k::AbstractVector{<:Real},Δ_0::Real) = 2*Δ_0
-Δ(::Val{:p_wave},k::AbstractVector{<:Real},Δ_x::Real,Δ_y::Real) = 2*(Δ_x*sin(k[1]) - Δ_y*sin(k[2])) + im*(Δ_x*sin(k[1]) + Δ_y*sin(k[2]))
+Δ(::Val{:p_wave},k::AbstractVector{<:Real},Δ_x::Real,Δ_y::Real) = 2*((Δ_x*sin(k[1]) - Δ_y*sin(k[2])) + im*(Δ_x*sin(k[1]) + Δ_y*sin(k[2])))
 Δ(::Val{:default},k::AbstractVector{<:Real},Δ_0::Real) = im*2*Δ_0(sin(k[1]) + sin(k[2]))
 function E(k::AbstractVector{<:Real},t::Real,μ::Real,pairing_type::String,Δ_kwargs...) 
     Δ_kwargs = (k,Δ_kwargs...) # match input format of Δ

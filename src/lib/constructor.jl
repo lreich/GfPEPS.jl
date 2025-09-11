@@ -9,8 +9,7 @@ mutable struct Gaussian_fPEPS
     # quadratic Hamiltonian parameters
     t::Float64 # hopping amplitude
     μ::Float64 # chemical potential
-    Δx::Float64 # pairing amplitude
-    Δy::Float64 # pairing amplitude
+    Δ_options::Dict{String, Any} # pairing options
 
     # optimizer
     maxiter::Int # maximum iterations
@@ -33,17 +32,27 @@ mutable struct Gaussian_fPEPS
         Ly = conf["system_params"]["Ly"]
         x_bc = Symbol(conf["system_params"]["x_bc"])
         y_bc = Symbol(conf["system_params"]["y_bc"])
-        pairing_type = conf["system_params"]["pairing_type"]
 
         bc = (x_bc, y_bc)
         # lattice_type = Symbol(conf["system_params"]["lattice_type"])
 
         # hamiltonian params
         t = conf["hamiltonian"]["t"]
-        Δ_x = conf["hamiltonian"]["Δ_x"]
-        Δ_y = conf["hamiltonian"]["Δ_y"]
+        pairing_type = conf["hamiltonian"]["Δ_options"]["pairing_type"]
+        Δ_options = conf["hamiltonian"]["Δ_options"]
         μ = conf["hamiltonian"]["μ"]
         δ = conf["hamiltonian"]["hole_density"]
+
+        # build Δ_vec from dict
+        Δ_vec = begin
+            if pairing_type == "d_wave" || pairing_type == "p_wave"
+                [Δ_options["Δ_x"], Δ_options["Δ_y"]]
+            elseif pairing_type == "s_wave"
+                [Δ_options["Δ_0"]]
+            else
+                error("Unknown pairing type: $pairing_type. Supported types are: d_wave, p_wave, s_wave.")
+            end
+        end
 
         # construct Brillouin zone
         bz = BrillouinZone2D(Lx,Ly,bc)
@@ -60,7 +69,7 @@ mutable struct Gaussian_fPEPS
         end
 
         # build loss function
-        loss = optimize_loss(t, μ, bz, Nf, Nv, pairing_type, Δ_x, Δ_y)
+        loss = optimize_loss(t, μ, bz, Nf, Nv, pairing_type, Δ_vec...)
 
         # build gradients
         g(x) = first(Zygote.gradient(loss, x))
@@ -71,26 +80,27 @@ mutable struct Gaussian_fPEPS
         Lx_init = 5
         Ly_init = 5
         bz_init = BrillouinZone2D(Lx_init,Ly_init,bc)
-        has_dirac_points(bz_init,t,μ,pairing_type,Δ_x,Δ_y) # warn if dirac points are present
-        loss = optimize_loss(t, μ, bz_init, Nf, Nv, pairing_type, Δ_x, Δ_y)
-        res = Optim.optimize(loss, g!, X, Optim.ConjugateGradient(manifold=Optim.Stiefel()), Optim.Options(
+        has_dirac_points(bz_init,t,μ,pairing_type,Δ_vec...) # warn if dirac points are present
+        loss = optimize_loss(t, μ, bz_init, Nf, Nv, pairing_type,Δ_vec...)
+        res_init = Optim.optimize(loss, g!, X, Optim.ConjugateGradient(manifold=Optim.Stiefel()), Optim.Options(
+        # res_init = Optim.optimize(loss, g!, X, Optim.LBFGS(;m=20,manifold=Optim.Stiefel()), Optim.Options(
             iterations = conf["params"]["maxiter"],
             g_tol = conf["params"]["grad_tol"],
-            show_trace = true
+            show_trace = conf["params"]["show_trace"]
         ))
 
-        # @info "Finding optimal X for full system size..."
-        # loss = optimize_loss(t, μ, bz, Nf, Nv, pairing_type, Δ_x, Δ_y)
-        # has_dirac_points(bz,t,μ,pairing_type,Δ_x,Δ_y) # warn if dirac points are present
-        # # optimize X for the full system size
-        # res = Optim.optimize(loss, g!, Optim.minimizer(res_init), Optim.ConjugateGradient(manifold=Optim.Stiefel()), Optim.Options(
-        #     iterations = conf["params"]["maxiter"],
-        #     g_tol = conf["params"]["grad_tol"],
-        #     show_trace = true
-        # ))
+        @info "Finding optimal X for full system size..."
+        loss = optimize_loss(t, μ, bz, Nf, Nv, pairing_type, Δ_vec...)
+        has_dirac_points(bz,t,μ,pairing_type,Δ_vec...) # warn if dirac points are present
+        # optimize X for the full system size
+        res = Optim.optimize(loss, g!, Optim.minimizer(res_init), Optim.ConjugateGradient(manifold=Optim.Stiefel()), Optim.Options(
+            iterations = conf["params"]["maxiter"],
+            g_tol = conf["params"]["grad_tol"],
+            show_trace = conf["params"]["show_trace"]
+        ))
 
         @show Optim.minimum(res)
-        println("Exact energy:", exact_energy_BCS_k(bz,t,μ,pairing_type,Δ_x,Δ_y))
+        println("Exact energy:", exact_energy_BCS_k(bz,t,μ,pairing_type,Δ_vec...))
 
         return new(
             Nf,
@@ -99,13 +109,12 @@ mutable struct Gaussian_fPEPS
             Ly,
             t,
             μ,
-            Δ_x,
-            Δ_y,
+            Δ_options,
             conf["params"]["maxiter"],
             conf["params"]["grad_tol"],
             # zeros(ITensor, 0, 0),
             Optim.minimum(res),
-            exact_energy_BCS_k(bz,t,μ,pairing_type,Δ_x,Δ_y)
+            exact_energy_BCS_k(bz,t,μ,pairing_type,Δ_vec...)
         )
     end
 end

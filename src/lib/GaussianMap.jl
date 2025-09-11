@@ -120,7 +120,7 @@ function GaussianMap(CM_out::AbstractMatrix, CM_in::AbstractArray, Nf::Int, Nv::
     A = CM_out[1:2*Nf, 1:2*Nf]
     B = CM_out[1:2*Nf, 2*Nf+1:end]
     D = CM_out[2*Nf+1:end, 2*Nf+1:end]
-    Bt = transpose(B)
+    # Bt = transpose(B)
 
     # Gaussian map for each (kx,ky)
     # N = size(CM_in,1)      
@@ -135,6 +135,7 @@ function GaussianMap(CM_out::AbstractMatrix, CM_in::AbstractArray, Nf::Int, Nv::
     # # avoid splatting to prevent StackOverflow
     # out3 = reduce((X,Y) -> cat(X, Y; dims=3), mats)   # (2Nf)×(2Nf)×N
     # return permutedims(out3, (3, 1, 2))               # N×(2Nf)×(2Nf)
-    mats = [B * ((D .+ s) \ Bt) .+ A for s in eachslice(CM_in; dims=1)]
+    
+    mats = map(s -> B * ((D .+ s) \ transpose(B)) .+ A, eachslice(CM_in; dims=1))
     return cat(mats...; dims=3) |> x -> permutedims(x, (3,1,2))
 end
