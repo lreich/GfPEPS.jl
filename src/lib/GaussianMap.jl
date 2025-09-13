@@ -23,8 +23,8 @@ helper(k) = [  0   e^{i k} * σ_x
 """
 function helper(k::Real)
     σ_x = [0 1; 1 0]
-    return [zeros(2,2) cis(k)*σ_x;
-            -conj(cis(k))*σ_x zeros(2,2)]
+    return [zeros(2,2) -cis(k)*σ_x;
+            conj(cis(k))*σ_x zeros(2,2)]
 end
 
 """
@@ -106,38 +106,4 @@ function GaussianMap(CM_out::AbstractMatrix, CM_in::AbstractArray, Nf::Int, Nv::
     # Gaussian map for each (kx,ky)
     mats = map(s -> B * ((D .+ s) \ transpose(B)) .+ A, eachslice(CM_in; dims=1))
     return cat(mats...; dims=3) |> x -> permutedims(x, (3,1,2))
-end
-
-"""
-    get_parent_hamiltonian(Γ_out::AbstractMatrix, Nf::Int, Nv::Int)
-
-Given the output correlation matrix Γ_out, return the parent Hamiltonian in Dirac fermions.
-"""
-function get_parent_hamiltonian(Γ_out::AbstractMatrix, Nf::Int, Nv::Int)
-    # convert from majorana basis to complex fermion basis
-    Ω = [I(4*Nv + Nf) I(4*Nv + Nf);
-        im*I(4*Nv + Nf) -im*I(4*Nv + Nf)]
-
-    return -0.5im .* Ω' * Γ_out * Ω
-end
-
-function translate_to_PEPS(X::AbstractMatrix, Nf::Int, Nv::Int)
-    Γ_out = Γ_fiducial(X, Nv, Nf)
-    H = get_parent_hamiltonian(Γ_out, Nf, Nv)
-
-    @show size(H)
-
-    _, M = eigen(H)
-    # @assert det(M) ≈ -1.0 "Fiducial state has odd parity. Odd parity is currently not supported."
-
-    U = M[1:Nf+4Nv, 1:Nf+4Nv]
-    V = M[1:Nf+4Nv, Nf+4Nv+1:end]
-
-
-    @show size(U)
-    @show size(V)
-
-    -inv(U) * V
-
-
 end

@@ -87,3 +87,20 @@ function solve_for_mu(bz::BrillouinZone2D, δ::Real, t::Real, Δ_x::Real, Δ_y::
 end
 
 # solve_for_mu(BrillouinZone2D(4,4,(:APBC,:PBC)), 0.5, 1.0, 0.5, -0.5)
+
+
+# binary "block" operator
+function _block(A, B)
+    return [
+        A zeros(eltype(A), size(A, 1), size(B, 2));
+        zeros(eltype(A), size(B, 1), size(A, 2)) B
+    ]
+end
+
+"""
+Form the block-diagonal (direct sum) of the matrices `ms`:
+"""
+function direct_sum(ms::AbstractMatrix...)
+    @assert length(ms) > 1 "need at least two matrices"
+    return reduce(_block, ms)
+end
