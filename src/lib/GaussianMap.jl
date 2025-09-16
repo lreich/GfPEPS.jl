@@ -24,7 +24,10 @@ helper(k) = [  0   e^{i k} * σ_x
 function helper(k::Real)
     σ_x = [0 1; 1 0]
     return [zeros(2,2) -cis(k)*σ_x;
-            conj(cis(k))*σ_x zeros(2,2)]
+            conj(cis(k))*σ_x zeros(2,2)] # Kraus thesis convention
+
+    # return [zeros(2,2) cis(k)*σ_x;
+    #         -conj(cis(k))*σ_x zeros(2,2)] # Hong hao paper convention
 end
 
 """
@@ -104,6 +107,7 @@ function GaussianMap(CM_out::AbstractMatrix, CM_in::AbstractArray, Nf::Int, Nv::
     # Bt = transpose(B)
 
     # Gaussian map for each (kx,ky)
-    mats = map(s -> B * ((D .+ s) \ transpose(B)) .+ A, eachslice(CM_in; dims=1))
+    mats = map(s -> B * ((D .- s) \ transpose(B)) .+ A, eachslice(CM_in; dims=1)) # Kraus thesis
+    # mats = map(s -> B * ((D .+ s) \ transpose(B)) .+ A, eachslice(CM_in; dims=1)) # Hong hao paper
     return cat(mats...; dims=3) |> x -> permutedims(x, (3,1,2))
 end

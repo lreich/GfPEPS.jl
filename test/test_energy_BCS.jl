@@ -3,6 +3,8 @@ using Test
 using GfPEPS
 using JSON: parsefile
 
+res = Gaussian_fPEPS(conf = parsefile(joinpath(GfPEPS.test_config_path, "conf_test_BCS_d_wave.json")));
+
 @testset "Energy BCS" begin
     @testset "d_wave" begin
     res = Gaussian_fPEPS(conf = parsefile(joinpath(GfPEPS.test_config_path, "conf_test_BCS_d_wave.json")))
@@ -19,7 +21,6 @@ using JSON: parsefile
         @test res.optim_res ≈ res.exact_energy
     end;
 end;
-
 
 # @time Gaussian_fPEPS(conf = parsefile(joinpath(GfPEPS.test_config_path, "conf_test_BCS_d_wave.json")));
 

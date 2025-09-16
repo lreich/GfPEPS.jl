@@ -2,7 +2,7 @@
 
 julia_version = "1.10.10"
 manifest_format = "2.0"
-project_hash = "9859b5fbce5e73be9dd34a79d631e3b707614f8c"
+project_hash = "4ea4e52f92f8ebd715017fc574b2dc77d64a295c"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "60665b326b75db6517939d0e1875850bc4a54368"
@@ -1543,6 +1543,12 @@ deps = ["Graphs", "LinearAlgebra", "Markdown", "SparseArrays"]
 git-tree-sha1 = "3e5f165e58b18204aed03158664c4982d691f454"
 uuid = "47aef6b3-ad0c-573a-a1e2-d07658019622"
 version = "1.5.0"
+
+[[deps.SkewLinearAlgebra]]
+deps = ["LinearAlgebra"]
+git-tree-sha1 = "5d44a4f56f7902c4414c0a477b021f17cf088cb3"
+uuid = "5c889d49-8c60-4500-9d10-5d3a22e2f4b9"
+version = "1.0.0"
 
 [[deps.Sockets]]
 uuid = "6462fe0b-24de-5631-8697-dd941f90decc"

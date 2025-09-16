@@ -310,9 +310,9 @@ The output complex fermion order will be
 function fiducial_state(T::Type{<:Number}, Np::Int, χ::Int, A::AbstractMatrix)
     ψ = paired_state(T, A)
     # reorder virtual fermions
-    perm = vcat(1:2:(2χ), 2:2:(2χ))
-    perm = Tuple(vcat(1:Np, perm .+ Np, perm .+ (Np + 2χ)))
-    ψ = TensorKit.permute(ψ, (perm, ()))
+    # perm = vcat(1:2:(2χ), 2:2:(2χ))
+    # perm = Tuple(vcat(1:Np, perm .+ Np, perm .+ (Np + 2χ)))
+    # ψ = TensorKit.permute(ψ, (perm, ()))
     return ψ
 end
 function fiducial_state(Np::Int, χ::Int, A::AbstractMatrix)
@@ -454,3 +454,108 @@ function BrillouinZone(Ns::NTuple{D, Int}, pbcs::Bool) where {D}
 end
 
 Base.size(bz::BrillouinZone) = bz.Ns
+
+#= Translate Pfaffian methods =#
+
+# Convert a real Majorana transform X ∈ SO(2M) to complex Bogoliubov blocks (U,V)
+# for ψ = [c; c†], via S = R^{-1} X R, where
+#   R = [ I  I
+#         i -i ]
+# and ψ' = S ψ, i.e. a' = U c + V c†.
+function bogoliubov_blocks_from_X(X::AbstractMatrix{<:Real})
+    @assert X'X ≈ I(size(X, 1)) "X must be orthogonal"
+
+    N = div(size(X,1),2)
+
+    # Ω = [I(N) I(N);
+    #      im*I(N) -im*I(N)]
+
+    # # convert from majorana basis to complex fermion basis
+    # Ω_single = [1 1;
+    #             im -im]
+    # Ω = ⊕(Ω_single, N)
+
+    # M = Ω' * X * Ω # Bogoliubov matrix
+
+    # U = M[1:N, 1:N]
+    # V = M[1:N, N+1:end]
+    # return U, V
+
+    G_in = fiducial_cormat(X)
+    H = parent_Hamiltonian_BdG(G_in)
+    _, W = bogoliubov(H)
+    detW = det(W)
+    if !(detW ≈ 1.0)
+        @assert detW ≈ -1
+        error("det(W) = -1; fiducial state has odd parity.")
+    end
+    U, V = bogoliubov_blocks(W)
+    return U, V
+end
+
+# Build Z and normalization factor Q = sqrt(det(U)).
+# We also fix a gauge so the vacuum amplitude is real and positive.
+function pairing_from_X(X::AbstractMatrix{<:Real})
+    U, V = bogoliubov_blocks_from_X(X)
+    Z = U \ V                    # Z = U^{-1} V
+    Q = sqrt(det(U))             # vacuum amplitude
+    phase = exp(-im*angle(Q))    # gauge-fix global phase ???
+    norm = phase * Q
+    return Z, norm
+end
+
+# Utility: integer index (1-based) from a slice of bits (little-endian inside the slice).
+@inline function bits_to_index(bits::AbstractVector{Bool})
+    idx = 1
+    for (k, b) in enumerate(bits)
+        idx += (b ? 1 : 0) << (k-1)
+    end
+    return idx
+end
+
+# Produce the fiducial tensor A[f,u,l,d,r] from X.
+# Mode ordering is [f(1..Nf), u(1..Nv), l(1..Nv), d(1..Nv), r(1..Nv)].
+function fiducial_tensor_from_X(X::AbstractMatrix{<:Real}, Nf::Int, Nv::Int)
+    M = Nf + 4Nv
+    Z, norm = pairing_from_X(X)  # Z is M×M antisymmetric in exact arithmetic
+
+    # Output leg order: (u, l, f, d, r)
+    dims = (1 << Nv, 1 << Nv, 1 << Nf, 1 << Nv, 1 << Nv)
+    A = Array{ComplexF64}(undef, dims)
+
+    # Predefine ranges for each group of modes
+    r_f = 1:Nf
+    r_u = Nf .+ (1:Nv)
+    r_l = Nf + Nv .+ (1:Nv)
+    r_d = Nf + 2Nv .+ (1:Nv)
+    r_r = Nf + 3Nv .+ (1:Nv)
+
+    # Loop all configurations; amplitude is Pf(Z_S) for even |S|
+    @inbounds for umask in 0:(dims[1]-1), lmask in 0:(dims[2]-1),
+                    fmask in 0:(dims[3]-1), dmask in 0:(dims[4]-1), rmask in 0:(dims[5]-1)
+
+        # Build full bit vector (little-endian within each group)
+        bits = falses(M)
+
+        for k in 1:Nf; bits[r_f[k]] = ((fmask >> (k-1)) & 0x1) == 1; end
+        for k in 1:Nv; bits[r_u[k]] = ((umask >> (k-1)) & 0x1) == 1; end
+        for k in 1:Nv; bits[r_l[k]] = ((lmask >> (k-1)) & 0x1) == 1; end
+        for k in 1:Nv; bits[r_d[k]] = ((dmask >> (k-1)) & 0x1) == 1; end
+        for k in 1:Nv; bits[r_r[k]] = ((rmask >> (k-1)) & 0x1) == 1; end
+
+        occ = findall(identity, bits)
+        if isodd(length(occ))
+            amp = 0.0 + 0.0im
+        elseif isempty(occ)
+            amp = norm
+        else
+            ZS = @view Z[occ, occ]
+            amp = norm * pfaffian(Matrix(ZS))  # Pfaffian of antisymmetric submatrix
+        end
+
+        # store with axes (u, l, f, d, r)
+        A[umask+1, lmask+1, fmask+1, dmask+1, rmask+1] = amp
+    end
+
+    return A
+end

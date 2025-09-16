@@ -117,6 +117,14 @@ mutable struct Gaussian_fPEPS
         @show Optim.minimum(res)
         println("Exact energy:", exact_energy_BCS_k(bz,t,μ,pairing_type,Δ_vec...))
 
+        # X_opt = Optim.minimizer(res)
+
+        # U,V = bogoliubov_blocks_from_X(X_opt)
+        # Z,norm = pairing_from_X(X_opt)
+        # A_fiducial = fiducial_tensor_from_X(X_opt, Nf, Nv)
+
+        # display(A_fiducial)
+
         return new(
             Nf,
             Nv,

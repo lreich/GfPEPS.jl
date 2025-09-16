@@ -50,7 +50,7 @@ for χenv in [8, 16]
     )
 end
 
-bz = BrillouinZone((128,128), (false, true))
+bz = GfPEPS.BrillouinZone((128,128), (false, true))
 
 O = LocalOperator(lattice, ((1, 1),) => hub.e_num(Trivial, Trivial))
 doping1 = 1 - real(expectation_value(peps, O, env))
