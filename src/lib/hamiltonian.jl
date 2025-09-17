@@ -72,9 +72,51 @@ function has_dirac_points(bz::BrillouinZone2D, t::Real, μ::Real, pairing_type::
 end
 
 #======================================================================================
+Functions for Bogoliubov transformations
+======================================================================================#
+function get_bogoliubov_blocks(M::AbstractMatrix)
+    N = div(size(M, 1), 2)
+
+    U = M[1:N, 1:N]
+    V = M[N+1:end, 1:N]
+
+    return U, V
+end
+
+"""
+Bogoliubov transformation of a fermionic bilinear Hamiltonian `H`. Returns 
+- The (positive) energy spectrum `E`, in descending order;
+- The transformation `M = [U conj(V); V conj(U)]` (such that `M' * H * M = diagm(vcat(E, -E))`);
+"""
+function bogoliubov(H::Hermitian)
+    N = div(size(H, 1), 2)
+    E, M0 = eigen(H; sortby = (x -> -real(x)))
+
+    U = M0[1:N, 1:N]
+    V = M0[N+1:end, 1:N]
+
+    # bring to correct form
+    M = similar(M0)
+    M[1:N, 1:N] = U
+    M[N+1:end, 1:N] = V
+    M[1:N, N+1:end] = conj.(V)
+    M[N+1:end, N+1:end] = conj.(U)
+
+    # check canonical constraints
+    # @assert M' * M ≈ I
+    # @assert U'U + V'V ≈ I
+    # @assert transpose(U) * V ≈ - transpose(V) * U
+    
+    # # check positiveness of energy
+    # @assert all(E[1:N] .> 0)
+    # # check that M diagonalizes H
+    # @assert M' * H * M ≈ diagm(vcat(E[1:N], -E[1:N]))
+    return M
+end
+
+#======================================================================================
 Functions to solve μ from hole density
 ======================================================================================#
-
 function exact_doping(bz::BrillouinZone2D, t::Real, μ::Real, Δ_x::Real, Δ_y::Real)
     return mean(map(eachcol(bz.kvals)) do k
         ξ(k,t,μ) / E(k, t, μ, Val(:d_wave), Δ_x, Δ_y)
@@ -85,9 +127,6 @@ function solve_for_mu(bz::BrillouinZone2D, δ::Real, t::Real, Δ_x::Real, Δ_y::
     μ = find_zero(x -> δ - exact_doping(bz, t, x, Δ_x, Δ_y), μ_range)
     return μ
 end
-
-# solve_for_mu(BrillouinZone2D(4,4,(:APBC,:PBC)), 0.5, 1.0, 0.5, -0.5)
-
 
 # binary "block" operator
 function _block(A, B)

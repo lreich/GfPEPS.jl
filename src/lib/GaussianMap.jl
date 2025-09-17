@@ -1,16 +1,3 @@
-"""
-    ⊕(A::AbstractMatrix, n::Integer)
-
-repeat A ⊕ A ⊕ ... (n times) via kron
-
-"""
-function ⊕(A::AbstractMatrix, n::Integer)
-    @assert n >= 1
-
-    Id = Matrix{eltype(A)}(I, n, n)
-    return kron(Id, A)
-end
-
 #= Correlation matrix function for the virtual bonds (G_in / Γ_in) =#
 """
     helper(k::Real)
@@ -39,7 +26,8 @@ G_in_single_k(k, Nv) = [⊕_{i=1}^{Nv} G_in_single_k(kx)] ⊕ [⊕_{i=1}^{Nv} G_
 
 """
 function G_in_single_k(k::AbstractVector{<:Real}, Nv::Integer)
-    return Matrix(BlockDiagonal([⊕(helper(k[1]), Nv),⊕(helper(k[2]), Nv)]))
+    # return Matrix(BlockDiagonal([⊕(helper(k[1]), Nv),⊕(helper(k[2]), Nv)]))
+    return Matrix(BlockDiagonal([⊕(helper(k[1]), Nv),⊕(helper(-k[2]), Nv)]))
 end
 
 """
@@ -81,7 +69,8 @@ Note:
 """
 function Γ_fiducial(X::AbstractMatrix, Nv::Int, Nf::Int)
     # return transpose(X) * ⊕([0.0 1.0; -1.0 0.0],4*Nv+2) * X
-    return transpose(X) * build_J(Nv,Nf) * X
+    Γ = transpose(X) * build_J(Nv,Nf) * X
+    return (Γ - transpose(Γ)) / 2 # ensure exact antisymmetry
 end
 
 """
@@ -107,7 +96,7 @@ function GaussianMap(CM_out::AbstractMatrix, CM_in::AbstractArray, Nf::Int, Nv::
     # Bt = transpose(B)
 
     # Gaussian map for each (kx,ky)
-    mats = map(s -> B * ((D .- s) \ transpose(B)) .+ A, eachslice(CM_in; dims=1)) # Kraus thesis
-    # mats = map(s -> B * ((D .+ s) \ transpose(B)) .+ A, eachslice(CM_in; dims=1)) # Hong hao paper
+    # mats = map(s -> B * ((D .- s) \ transpose(B)) .+ A, eachslice(CM_in; dims=1)) # Kraus thesis
+    mats = map(s -> B * ((D .+ s) \ transpose(B)) .+ A, eachslice(CM_in; dims=1)) # Hong hao paper
     return cat(mats...; dims=3) |> x -> permutedims(x, (3,1,2))
 end

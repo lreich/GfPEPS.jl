@@ -11,7 +11,6 @@ using Zygote
 using JSON: parsefile
 using Random
 using TensorOperations
-# using F_utilities
 using SkewLinearAlgebra
 
 using SparseArrays: sparse, blockdiag, spdiagm
@@ -32,7 +31,7 @@ include("lib/GaussianMap.jl")
 include("lib/constructor.jl")
 include("lib/loss.jl")
 include("lib/translate.jl")
-include("models/bcs.jl")
+include("lib/utils.jl")
 
 include("exports.jl") # export functions
 

@@ -19,6 +19,8 @@ obj = Gaussian_fPEPS();
 X_opt = obj.X_opt
 G = GfPEPS.Γ_fiducial(X_opt, obj.Nv, obj.Nf)
 
+size(X_opt)
+
 Nf = obj.Nf
 Nv = obj.Nv
 # Nf = 2
