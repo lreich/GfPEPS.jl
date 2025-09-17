@@ -37,7 +37,7 @@ function rand_CM(Nf::Int, Nv::Int)
 
         @show pfaffian(im .* Γ)
         if pfaffian(im .* Γ) ≈ 1 # for pure BCS state with even parity Pf(iΓ) = +1
-            return Γ
+            return Γ, X
         end
     end
 end

@@ -30,15 +30,15 @@ function energy_loss(t::Real, μ::Real, bz::BrillouinZone2D, pairing_type::Strin
         # Paper: κ = 0.25 * [G_paper[1,4] + G_paper[2,3] + i*(G_paper[2,4] - G_paper[1,3])]
         # Translated: κ = 0.25 * [G_code[1,4] + G_code[3,2] + i*(G_code[3,4] - G_code[1,2])]
         
-        # G13, G24, G14, G32, G34, G12 = CM_out[:, 1, 3], CM_out[:, 2, 4], CM_out[:, 1, 4], CM_out[:, 3, 2], CM_out[:, 3, 4], CM_out[:, 1, 2]
-        # η = 0.25 .* (G14 .+ G32 .+ im .* (G34 .- G12))
-        # @inbounds E = ξk_batched_summed - 0.5*(dot(ξk_batched, G13) + dot(ξk_batched, G24)) + 2*real(dot(Δk_batched, η))
-        # return real(E * invN)
-
-        G12, G34, G14, G23, G24, G13 = CM_out[:, 1, 2], CM_out[:, 3, 4], CM_out[:, 1, 4], CM_out[:, 2, 3], CM_out[:, 2, 4], CM_out[:, 1, 3]
-        η = 0.25 .* (G14 .+ G23 .+ im .* (G24 .- G13))
-        @inbounds E = ξk_batched_summed - 0.5*(dot(ξk_batched, G12) + dot(ξk_batched, G34)) + 2*real(dot(Δk_batched, η))
+        G13, G24, G14, G32, G34, G12 = CM_out[:, 1, 3], CM_out[:, 2, 4], CM_out[:, 1, 4], CM_out[:, 3, 2], CM_out[:, 3, 4], CM_out[:, 1, 2]
+        η = 0.25 .* (G14 .+ G32 .+ im .* (G34 .- G12))
+        @inbounds E = ξk_batched_summed - 0.5*(dot(ξk_batched, G13) + dot(ξk_batched, G24)) + 2*real(dot(Δk_batched, η))
         return real(E * invN)
+
+        # G12, G34, G14, G23, G24, G13 = CM_out[:, 1, 2], CM_out[:, 3, 4], CM_out[:, 1, 4], CM_out[:, 2, 3], CM_out[:, 2, 4], CM_out[:, 1, 3]
+        # η = 0.25 .* (G14 .+ G23 .+ im .* (G24 .- G13))
+        # @inbounds E = ξk_batched_summed - 0.5*(dot(ξk_batched, G12) + dot(ξk_batched, G34)) + 2*real(dot(Δk_batched, η))
+        # return real(E * invN)
     end
 
     return energy

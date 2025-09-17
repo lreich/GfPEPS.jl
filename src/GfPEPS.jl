@@ -25,13 +25,15 @@ const unit = TensorKit.id(V)
 MKL.set_num_threads(Sys.CPU_THREADS) 
 
 #= include local files =#
+include("lib/utils.jl")
 include("lib/brillouinZone.jl")
 include("lib/hamiltonian.jl")
 include("lib/GaussianMap.jl")
 include("lib/constructor.jl")
 include("lib/loss.jl")
+include("lib/states.jl")
 include("lib/translate.jl")
-include("lib/utils.jl")
+
 
 include("exports.jl") # export functions
 

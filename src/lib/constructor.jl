@@ -29,6 +29,7 @@ mutable struct Gaussian_fPEPS
         Random.seed!(conf["params"]["seed"])
         Nf = conf["params"]["N_physical_fermions_on_site"]
         Nv = conf["params"]["N_virtual_fermions_on_bond"]
+        N = Nf + 4*Nv # total number of fermions per site
 
         Lx = conf["system_params"]["Lx"]
         Ly = conf["system_params"]["Ly"]
@@ -66,17 +67,15 @@ mutable struct Gaussian_fPEPS
         U,_,V = svd(X)
         X = U*V'
         
-        # # ensure correct parity sector
-        # for _ in 1:10
-        #     X = rand_orth(2Nf+8Nv)
-        #     G = Γ_fiducial(X, Nv, Nf)
-        #     H = get_parent_hamiltonian(G)
-        #     E, W = bogoliubov(H)
-        #     @show det(W)
-        #     if det(W) ≈ 1
-        #         break
-        #     end
-        # end
+        # ensure correct parity sector
+        for _ in 1:10
+            X = rand_orth(2N)
+            Γ = Γ_fiducial(X, Nv, Nf)
+            @show pfaffian(im .* Γ)
+            if pfaffian(im .* Γ) ≈ 1 # for pure BCS state with even parity Pf(iΓ) = +1
+                break
+            end
+        end
 
 
         if(conf["hamiltonian"]["μ_from_hole_density"])

@@ -111,7 +111,7 @@ function bogoliubov(H::Hermitian)
     # @assert all(E[1:N] .> 0)
     # # check that M diagonalizes H
     # @assert M' * H * M ≈ diagm(vcat(E[1:N], -E[1:N]))
-    return M
+    return E, M
 end
 
 #======================================================================================

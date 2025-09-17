@@ -73,7 +73,10 @@ V = W[N+1:end, 1:N]
 
 V'V + U'U ≈ I
 transpose(U) * V ≈ - transpose(V) * U 
-Z = conj(U) \ V
+
+inv(V)
+
+Z = -V \ U
 Z ≈ -transpose(Z)
 Z .= 0.5 .* (Z .- transpose(Z))
 
