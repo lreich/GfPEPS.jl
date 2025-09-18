@@ -10,11 +10,14 @@ helper(k) = [  0   e^{i k} * σ_x
 """
 function helper(k::Real)
     σ_x = [0 1; 1 0]
-    return [zeros(2,2) -cis(k)*σ_x;
-            conj(cis(k))*σ_x zeros(2,2)] # Kraus thesis convention
+    # return [zeros(2,2) -cis(k)*σ_x;
+    #         cis(k)*σ_x zeros(2,2)] # Kraus thesis convention (qq-ordering, lrud)
 
-    # return [zeros(2,2) cis(k)*σ_x;
-    #         -conj(cis(k))*σ_x zeros(2,2)] # Hong hao paper convention
+    return [zeros(2,2) cis(k)*σ_x;
+            -conj(cis(k))*σ_x zeros(2,2)] # Hong hao paper convention (qq-ordering, l_1,r_1...l_Nv,r_Nv,u_1,d_1...u_Nv,d_Nv)
+
+    # return [zeros(2,2) -conj(cis(k))*σ_x;
+    #         cis(k)*σ_x zeros(2,2)] # Hackenbroich 2010
 end
 
 """
@@ -26,8 +29,8 @@ G_in_single_k(k, Nv) = [⊕_{i=1}^{Nv} G_in_single_k(kx)] ⊕ [⊕_{i=1}^{Nv} G_
 
 """
 function G_in_single_k(k::AbstractVector{<:Real}, Nv::Integer)
-    # return Matrix(BlockDiagonal([⊕(helper(k[1]), Nv),⊕(helper(k[2]), Nv)]))
-    return Matrix(BlockDiagonal([⊕(helper(k[1]), Nv),⊕(helper(-k[2]), Nv)]))
+    return Matrix(BlockDiagonal([⊕(helper(k[1]), Nv),⊕(helper(k[2]), Nv)]))
+    # return Matrix(BlockDiagonal([⊕(helper(k[1]), Nv),⊕(helper(-k[2]), Nv)]))
 end
 
 """
@@ -61,7 +64,8 @@ Zygote.@nograd build_J # constructing J is not something we need gradients throu
 """
     Γ_fiducial(X::AbstractMatrix, Nv::Int)
 
-Construct the correlation matrix for the fiducial state A from orthogonal matrix X.
+Construct the covariance matrix for the fiducial state A from orthogonal matrix X in the Majorana representation.
+The Majorana modes are in qp-ordering: (c_1, c_3, ..., c_(2(4Nv + Nf)-1), c_2, c_4, ..., c_(2(4Nv + Nf)))
 
 Note:
 - X must be an orthogonal matrix: X * X' = I 
@@ -70,6 +74,7 @@ Note:
 function Γ_fiducial(X::AbstractMatrix, Nv::Int, Nf::Int)
     # return transpose(X) * ⊕([0.0 1.0; -1.0 0.0],4*Nv+2) * X
     Γ = transpose(X) * build_J(Nv,Nf) * X
+
     return (Γ - transpose(Γ)) / 2 # ensure exact antisymmetry
 end
 
@@ -85,6 +90,7 @@ Keyword arguments:
 
 Note:
 - CM_out must be a real antisymmetric matrix, i.e., CM_out² = -I
+- CM_out is in qp-ordering: (c_1, c_3, ..., c_(2(4Nv + Nf)-1), c_2, c_4, ..., c_(2(4Nv + N
 - The covariance matrices are currently only Fourier transformed TODO: also do for real space / no translation inv systems
 
 """

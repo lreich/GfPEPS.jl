@@ -71,12 +71,11 @@ mutable struct Gaussian_fPEPS
         for _ in 1:10
             X = rand_orth(2N)
             Γ = Γ_fiducial(X, Nv, Nf)
-            @show pfaffian(im .* Γ)
             if pfaffian(im .* Γ) ≈ 1 # for pure BCS state with even parity Pf(iΓ) = +1
+                @info "Created initial covariance matrix with even parity sector"
                 break
             end
         end
-
 
         if(conf["hamiltonian"]["μ_from_hole_density"])
             μ = solve_for_mu(bz,δ,t,Δ_x,Δ_y)

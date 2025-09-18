@@ -24,7 +24,7 @@ Input axis order
 function get_peps(ω::AbstractTensor{T, S, N1}, F::AbstractTensor{T, S, N2}) where {T, S, N1, N2}
     V = fermion_space()
     Nv = div(N1, 2)
-    Nf = N2 - 4χ
+    Nf = N2 - 4Nv
 
     #= Notes:
         - fuse(V, V, ...) gives us the representation that is the result of fusing all the single fermion spaces together.
@@ -78,23 +78,45 @@ function translate(X::AbstractMatrix, Nf::Int, Nv::Int)
     return peps
 end
 
+"""
+    function qp_to_qq_ordering_transformation(Nf::Int, Nv::Int)
+
+Construct the transformation matrix F from qp-ordering to qq-ordering for (Nf + 4Nv) complex fermions.
+
+N = Nf + 4Nv
+F: (c1,c3,...,c(2N-1), c2,c4,...,c2N)  → (c1,c2,...,c2N)
+
+"""
+function qp_to_qq_ordering_transformation(Nf::Int, Nv::Int)
+    N = Nf + 4Nv
+    F = zeros(Int, 2N, 2N)
+
+    for i in 1:2N
+        ind = isodd(i) ? ((i + 1) ÷ 2) : (N + (i ÷ 2))
+        F[i, ind] = 1
+    end
+
+    return F
+end
+Zygote.@nograd qp_to_qq_ordering_transformation
+
 function get_Dirac_to_Majorana_transformation(N::Int)
     Ω = ComplexF64.(zeros(2N,2N))
-    for μ in 1:2N
-        for v in 1:2N
-            if iseven(μ)
-                if v==μ/2
-                    Ω[μ,v] += 1
+    for i in 1:2N
+        for j in 1:2N
+            if iseven(i)
+                if j==μ÷2
+                    Ω[i,j] += 1
                 end
-                if v==μ/2+N
-                    Ω[μ,v] += 1
+                if j==μ÷2+N
+                    Ω[i,j] += 1
                 end
             else
-                if v==(μ+1)/2
-                    Ω[μ,v] += 1im
+                if j==(i+1)÷2
+                    Ω[i,j] += 1im
                 end
-                if v==(μ+1)/2+N
-                    Ω[μ,v] += -1im
+                if j==(i+1)÷2+N
+                    Ω[i,j] += -1im
                 end
             end
         end

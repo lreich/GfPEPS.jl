@@ -1,6 +1,8 @@
 """
     energy_loss(t::Real, Δ_x::Real, Δ_y::Real, μ::Real, bz::BrillouinZone2D)
 Return a function energy(BatchGout) computing the mean energy density.
+
+    Note: ony for Nf=2 BCS Hamiltonian
 """
 function energy_loss(t::Real, μ::Real, bz::BrillouinZone2D, pairing_type::String, Δ_kwargs...)
     k_vals = bz.kvals
@@ -12,29 +14,18 @@ function energy_loss(t::Real, μ::Real, bz::BrillouinZone2D, pairing_type::Strin
     # divide by number of k-points
     invN = 1.0 / size(k_vals, 2) # actually faster when precomputed as multiplication is faster than division
 
-    # TODO: energy convention verstehen
-    # weird ordering here
     function energy(CM_out::AbstractArray)
-        # as less allocations as possible for zygote
-        # return @views real(sum( ξk .* (1 .- 1/2 .* ( CM_out[:,1,3] .+ CM_out[:,2,4])) .+
-        #                 batch_delta .* (CM_out[:,1,4] .+ CM_out[:,3,2]) ) ./ N)
-
-        # The following implementations are based on the exact formulas from the user-provided paper,
-        # translated into the code's specific basis ordering.
-        # Deduced Code Basis: (c_k,↑, c_k,↓, c†_{-k,↑}, c†_{-k,↓})
-        # Paper's Basis (assumed): (c_k,↑, c†_{-k,↑}, c_k,↓, c†_{-k,↓})
-        # Density calculation using the paper's formula translated to the code's basis:
-        # Paper: n_up = 0.5 - 0.5 * G_paper[1,2]; n_down = 0.5 - 0.5 * G_paper[3,4]
-        # Translated: n_up = 0.5 - 0.5 * G_code[1,3]; n_down = 0.5 - 0.5 * G_code[2,4]
-        # Pairing correlator (kappa) using the paper's formula translated to the code's basis:
-        # Paper: κ = 0.25 * [G_paper[1,4] + G_paper[2,3] + i*(G_paper[2,4] - G_paper[1,3])]
-        # Translated: κ = 0.25 * [G_code[1,4] + G_code[3,2] + i*(G_code[3,4] - G_code[1,2])]
-        
+        #= 
+            qp-ordering of Majorana modes: (c_1, c_3, ..., c_(2(4Nv + Nf)-1), c_2, c_4, ..., c_(2(4Nv + Nf)))
+        =#
         G13, G24, G14, G32, G34, G12 = CM_out[:, 1, 3], CM_out[:, 2, 4], CM_out[:, 1, 4], CM_out[:, 3, 2], CM_out[:, 3, 4], CM_out[:, 1, 2]
         η = 0.25 .* (G14 .+ G32 .+ im .* (G34 .- G12))
         @inbounds E = ξk_batched_summed - 0.5*(dot(ξk_batched, G13) + dot(ξk_batched, G24)) + 2*real(dot(Δk_batched, η))
         return real(E * invN)
 
+        # #= 
+        #     qq-ordering of Majorana modes: (c_1, c_2, ..., c_(2(4Nv + Nf)))
+        # =#
         # G12, G34, G14, G23, G24, G13 = CM_out[:, 1, 2], CM_out[:, 3, 4], CM_out[:, 1, 4], CM_out[:, 2, 3], CM_out[:, 2, 4], CM_out[:, 1, 3]
         # η = 0.25 .* (G14 .+ G23 .+ im .* (G24 .- G13))
         # @inbounds E = ξk_batched_summed - 0.5*(dot(ξk_batched, G12) + dot(ξk_batched, G34)) + 2*real(dot(Δk_batched, η))

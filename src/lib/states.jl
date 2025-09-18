@@ -90,7 +90,7 @@ paired_state(Z) = paired_state(ComplexF64, Z)
 Construct the local tensor of the fiducial state
 `exp(a† Z a† / 2)`, where A is an anti-symmetric matrix.
 
-Input complex fermion order in `a` should be
+Input complex fermion order should be
 (f_1, ..., f_{Nf}, l_1, r_1, ..., l_χ, r_χ, d_1, u_1, ..., d_χ, u_χ)
 
 The output complex fermion order will be
@@ -98,10 +98,10 @@ The output complex fermion order will be
 """
 function fiducial_state(T::Type{<:Number}, Nf::Int, Nv::Int, Z::AbstractMatrix)
     ψ = paired_state(T, Z)
-    # reorder virtual fermions
+    # reorder virtual fermions (TensorKit automaticially handles fermionic signs)
     perm = vcat(1:2:(2Nv), 2:2:(2Nv))
     perm = Tuple(vcat(1:Nf, perm .+ Nf, perm .+ (Nf + 2Nv)))
-    ψ = permute(ψ, (perm, ()))
+    ψ = TensorKit.permute(ψ, (perm, ()))
     return ψ
 end
 fiducial_state(Nf::Int, Nv::Int, Z::AbstractMatrix) = fiducial_state(ComplexF64, Nf, Nv, Z)
