@@ -41,7 +41,10 @@ vacuum_state(n::Int) = vacuum_state(ComplexF64, n)
 Construct the maximally entangled state (MES) on virtual bonds
 for Nv flavours of virtual fermions `(a1_i, a2_i)` (i = 1, ..., Nv)
 ```
-    |ω⟩ = ∏_{i=1}^Nv 1/sqrt(2) (1 + a1†_i a2†_i) |0⟩
+    |ω⟩ = ∏_{α=1}^Nv 1/sqrt(2) (1 + a1†_α a2†_α) |0⟩
+
+    For horizontal bond: a1†_α=r†_iα, a2†_α=l†_(i+̂x)α
+    For vertical bond:   a1†_α=d†_iα, a2†_u=d†_(i+̂y)α
 ```
 """
 function virtual_state(T::Type{<:Number}, Nv::Int)
@@ -62,7 +65,7 @@ virtual_state(Nv) = virtual_state(ComplexF64, Nv)
 
 """
 Construct the fully paired state `exp(a† Z a† / 2)`, 
-where A is an anti-symmetric matrix.
+where Z is an anti-symmetric matrix.
 """
 function paired_state(T::Type{<:Number}, Z::AbstractMatrix)
     N = size(Z, 1)
@@ -88,10 +91,10 @@ Construct the local tensor of the fiducial state
 `exp(a† Z a† / 2)`, where A is an anti-symmetric matrix.
 
 Input complex fermion order in `a` should be
-(p_1, ..., p_{Nf}, l_1, r_1, ..., l_χ, r_χ, d_1, u_1, ..., d_χ, u_χ)
+(f_1, ..., f_{Nf}, l_1, r_1, ..., l_χ, r_χ, d_1, u_1, ..., d_χ, u_χ)
 
 The output complex fermion order will be
-(p_1, ..., p_{Nf}, l_1, ..., l_χ, r_1, ..., r_χ, d_1, ..., d_χ, u_1, ..., u_χ)
+(f_1, ..., f_{Nf}, l_1, ..., l_χ, r_1, ..., r_χ, d_1, ..., d_χ, u_1, ..., u_χ)
 """
 function fiducial_state(T::Type{<:Number}, Nf::Int, Nv::Int, Z::AbstractMatrix)
     ψ = paired_state(T, Z)
