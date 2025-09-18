@@ -36,7 +36,7 @@ end
 vacuum_state(n::Int) = vacuum_state(ComplexF64, n)
 
 """
-    virtual_state(T::Type{<:Number}, Nv::Int)
+    virtual_bond_state(T::Type{<:Number}, Nv::Int)
 
 Construct the maximally entangled state (MES) on virtual bonds
 for Nv flavours of virtual fermions `(a1_i, a2_i)` (i = 1, ..., Nv)
@@ -47,7 +47,7 @@ for Nv flavours of virtual fermions `(a1_i, a2_i)` (i = 1, ..., Nv)
     For vertical bond:   a1†_α=d†_iα, a2†_u=d†_(i+̂y)α
 ```
 """
-function virtual_state(T::Type{<:Number}, Nv::Int)
+function virtual_bond_state(T::Type{<:Number}, Nv::Int)
     ff = f_dag_f_dag(T)
     vac = vacuum_state(T, 2)
     # MES for one pair of (a1_i, a2_i) on the bond
@@ -61,7 +61,7 @@ function virtual_state(T::Type{<:Number}, Nv::Int)
     end
     return ω
 end
-virtual_state(Nv) = virtual_state(ComplexF64, Nv)
+virtual_bond_state(Nv) = virtual_bond_state(ComplexF64, Nv)
 
 """
 Construct the fully paired state `exp(a† Z a† / 2)`, 

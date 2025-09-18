@@ -72,7 +72,7 @@ function translate(X::AbstractMatrix, Nf::Int, Nv::Int)
 
     display(Z)
 
-    ω = virtual_state(Nv)
+    ω = virtual_bond_state(Nv)
     F = fiducial_state(Nf, Nv, Z)
     peps = get_peps(ω, F)
     return peps
