@@ -79,16 +79,14 @@ function translate(X::AbstractMatrix, Nf::Int, Nv::Int)
 end
 
 """
-    function qp_to_qq_ordering_transformation(Nf::Int, Nv::Int)
+    function qp_to_qq_ordering_transformation(N::Int)
 
-Construct the transformation matrix F from qp-ordering to qq-ordering for (Nf + 4Nv) complex fermions.
+Construct the transformation matrix F from qp-ordering to qq-ordering for N complex fermions.
 
-N = Nf + 4Nv
 F: (c1,c3,...,c(2N-1), c2,c4,...,c2N)  → (c1,c2,...,c2N)
 
 """
-function qp_to_qq_ordering_transformation(Nf::Int, Nv::Int)
-    N = Nf + 4Nv
+function qp_to_qq_ordering_transformation(N::Int)
     F = zeros(Int, 2N, 2N)
 
     for i in 1:2N
@@ -100,65 +98,71 @@ function qp_to_qq_ordering_transformation(Nf::Int, Nv::Int)
 end
 Zygote.@nograd qp_to_qq_ordering_transformation
 
-function get_Dirac_to_Majorana_transformation(N::Int)
+function get_Dirac_to_Majorana_qq_transformation(N::Int)
     Ω = ComplexF64.(zeros(2N,2N))
     for i in 1:2N
         for j in 1:2N
-            if iseven(i)
-                if j==μ÷2
+            if isodd(i)
+                if j==(i+1)÷2
                     Ω[i,j] += 1
                 end
-                if j==μ÷2+N
+                if j==(i+1)÷2+N
                     Ω[i,j] += 1
                 end
             else
-                if j==(i+1)÷2
+                if j==i÷2
                     Ω[i,j] += 1im
                 end
-                if j==(i+1)÷2+N
+                if j==i÷2+N
                     Ω[i,j] += -1im
                 end
             end
         end
     end
-    Ωdag = 2*inv(Ω)
+    # Ωdag = 2*inv(Ω)
 
-    return Ω,Ωdag
+    return Ω
 end
 
-function get_Dirac_to_Majorana_transformation2(N::Int)
-    Ω_single = [1 1;
-                im -im]
+get_Dirac_to_Majorana_qq_transformation(2)
 
-    Ω = ⊕(Ω_single, N)
-
+function get_Dirac_to_Majorana_qp_transformation(N::Int)
     Ω = [I(N) I(N);
          im*I(N) -im*I(N)]
 
     return Ω
 end
 
+
 """
     get_parent_hamiltonian(Γ_out::AbstractMatrix, Nf::Int, Nv::Int)
 
 Given the output correlation matrix Γ_out in Majorana representation, return the parent Hamiltonian in Dirac fermions.
 """
-function get_parent_hamiltonian(Γ_out::AbstractMatrix)
+function get_parent_hamiltonian(Γ_out::AbstractMatrix, Nf::Int, Nv::Int)
     @assert eltype(Γ_out) <: Real && Γ_out ≈ -transpose(Γ_out)
     N = div(size(Γ_out, 1), 2)
 
     # convert from majorana basis to complex fermion basis
-    Ω, Ωdag = get_Dirac_to_Majorana_transformation(N)
-    @assert Ω*Ωdag ≈ 2I
+    F = qp_to_qq_ordering_transformation(Nf)
+    P_full = BlockDiagonal([F, Matrix(I(8*Nv))])
+    Γ_out_qq = P_full * Γ_out * P_full'
+    @assert Γ_out_qq ≈ -transpose(Γ_out_qq)
 
-    Γ_out_dirac = 1/2 .* (transpose(Ω) * Γ_out * conj(Ω))
+    S = get_Dirac_to_Majorana_qq_transformation(N)
+    Γ_out_dirac = inv(S) * Γ_out_qq * transpose(inv(S))
+    @assert Γ_out_dirac ≈ -transpose(Γ_out_dirac)
 
-    # Ω = [I(N) I(N);
-    #      im*I(N) -im*I(N)]
 
-    # Γ_out_dirac = 1/2 .* Ω' * Γ_out * Ω
+    # Ω_qp = get_Dirac_to_Majorana_qp_transformation(Nf)
+    # Ω_qq = get_Dirac_to_Majorana_qq_transformation(4Nv)
+    # @assert Ω_qq*Ω_qq' ≈ 2I
+    # @assert Ω_qp*Ω_qp' ≈ 2I
 
-    H = Hermitian(im .* Γ_out_dirac)
+    # Ω = BlockDiagonal([Ω_qp, Ω_qq])
+
+    # Γ_out_dirac = 1/2 .* (Ω * Γ_out * Ω')
+    H = Hermitian(-im .* Γ_out_dirac)
 
     # # put annihilation in front of creation operators
     # # (f_1, ..., f_N, f†_1, ..., f†_N)
