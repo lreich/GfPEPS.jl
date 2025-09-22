@@ -79,6 +79,7 @@ function get_bogoliubov_blocks(M::AbstractMatrix)
 
     U = M[1:N, 1:N]
     V = M[N+1:end, 1:N]
+    # V = M[1:N, N+1:end]
 
     return U, V
 end

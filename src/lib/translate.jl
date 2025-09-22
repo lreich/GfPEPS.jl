@@ -2,23 +2,23 @@
 Get PEPS tensor by contracting virtual axes of ⟨ω|F⟩,
 where |ω⟩, |F⟩ are the virtual and the fiducial states.
 ```
-            -2
+            -1
             ↓
             ω
             ↑
-            1  -1
+            1  -3
             ↑ ↗
-    -5  --←-F-→- 2 -→-ω-←- -3
+    -2  --←-F-→- 2 -→-ω-←- -5
             ↓
             -4
 ```
 Input axis order
 ```
-        5  1                2
+        4  1                2
         ↑ ↗                 ↑
     2-←-F-→-3   1-←-ω-→-2   ω
         ↓                   ↓
-        4                   1
+        5                   1
 ```
 """
 function get_peps(ω::AbstractTensor{T, S, N1}, F::AbstractTensor{T, S, N2}) where {T, S, N1, N2}
@@ -48,6 +48,7 @@ function get_peps(ω::AbstractTensor{T, S, N1}, F::AbstractTensor{T, S, N2}) whe
 
     # contract virtual legs by computing: A=⟨ω|F⟩
     @tensor A[-1; -2 -3 -4 -5] := conj(ω[1 -2]) * conj(ω[2 -3]) * F[-1 -5 2 -4 1]
+
     return InfinitePEPS(A; unitcell = (1, 1))
 end
 
@@ -63,14 +64,14 @@ function translate(X::AbstractMatrix, Nf::Int, Nv::Int)
     @assert Γ * Γ ≈ -I "Covariance matrix must satisfy Γ² = -I for a pure Gaussian state"
     @assert pfaffian(im .* Γ) ≈ 1  "Pure BCS states must have even parity Pf(iΓ) = +1"
 
-    H = get_parent_hamiltonian(Γ)
-    _, M = bogoliubov(H)
+    H = get_parent_hamiltonian(Γ, Nf, Nv)
+    # _, M = bogoliubov(H)
+    _, M =  eigen(H; sortby = (x -> -real(x)))
 
     U,V = get_bogoliubov_blocks(M)
     # Z = -inv(U) * V # pairing matrix 
-    Z = -U \ conj(V)
-
-    display(Z)
+    Z = -conj(U) \ V # pairing matrix
+    Z = (Z - transpose(Z)) / 2  # ensure exact antisymmetry
 
     ω = virtual_bond_state(Nv)
     F = fiducial_state(Nf, Nv, Z)
@@ -124,8 +125,6 @@ function get_Dirac_to_Majorana_qq_transformation(N::Int)
     return Ω
 end
 
-get_Dirac_to_Majorana_qq_transformation(2)
-
 function get_Dirac_to_Majorana_qp_transformation(N::Int)
     Ω = [I(N) I(N);
          im*I(N) -im*I(N)]
@@ -139,49 +138,44 @@ end
 
 Given the output correlation matrix Γ_out in Majorana representation, return the parent Hamiltonian in Dirac fermions.
 """
-function get_parent_hamiltonian(Γ_out::AbstractMatrix, Nf::Int, Nv::Int)
-    @assert eltype(Γ_out) <: Real && Γ_out ≈ -transpose(Γ_out)
-    N = div(size(Γ_out, 1), 2)
+function get_parent_hamiltonian(X::AbstractMatrix, Nf::Int, Nv::Int)
+    @assert X*X' ≈ I "X must be orthogonal"
+    N = div(size(X, 1), 2)
 
-    # convert from majorana basis to complex fermion basis
+    # construct covariance matrix of the fiducial state from X
+    Γ_out = Γ_fiducial(X, Nv, Nf)
+    @assert Γ_out ≈ -transpose(Γ_out) "Fiducial state CM must be antisymmetric"
+    @assert Γ_out^2 ≈ -I "Fiducial state CM must be pure"
+
+    # bring majoranas of physical fermions to qq ordering
     F = qp_to_qq_ordering_transformation(Nf)
-    P_full = BlockDiagonal([F, Matrix(I(8*Nv))])
-    Γ_out_qq = P_full * Γ_out * P_full'
+    P = BlockDiagonal([F, Matrix(I(8*Nv))]) # full permutation matrix
+    Γ_out_qq = P * Γ_out * P'
     @assert Γ_out_qq ≈ -transpose(Γ_out_qq)
+    @assert Γ_out_qq^2 ≈ -I
 
-    S = get_Dirac_to_Majorana_qq_transformation(N)
-    Γ_out_dirac = inv(S) * Γ_out_qq * transpose(inv(S))
-    @assert Γ_out_dirac ≈ -transpose(Γ_out_dirac)
+    # Now transform to Dirac fermions in qq ordering
+    S0 = [1  1; im  -im]
+    S = kron(I(N), S0)
+    Γ_out_dirac_qq = inv(conj.(S)) * Γ_out_qq * inv(transpose(S))
 
+    # bring to qp ordering
+    perm = vcat(1:2:(2N), 2:2:(2N))
+    Γ_out_dirac = Γ_out_dirac_qq[perm, perm]
 
-    # Ω_qp = get_Dirac_to_Majorana_qp_transformation(Nf)
-    # Ω_qq = get_Dirac_to_Majorana_qq_transformation(4Nv)
-    # @assert Ω_qq*Ω_qq' ≈ 2I
-    # @assert Ω_qp*Ω_qp' ≈ 2I
+    @assert Γ_out_dirac' ≈ -Γ_out_dirac "Fiducial state CM in Dirac representation must be anti-hermitian"
+    @assert Γ_out_dirac*Γ_out_dirac' ≈ I ./ 4 "Fiducial state CM in Dirac representation must be pure"
 
-    # Ω = BlockDiagonal([Ω_qp, Ω_qq])
+    R_conj = Γ_out_dirac[1:N, 1:N]
+    Q_conj = Γ_out_dirac[1:N, N+1:end]
+    Q = Γ_out_dirac[N+1:end, 1:N]
+    R = Γ_out_dirac[N+1:end, N+1:end]
+    @assert R_conj ≈ conj(R)
+    @assert Q_conj ≈ conj(Q)
+    @assert R' ≈ -R
+    @assert transpose(Q) ≈ -Q
 
-    # Γ_out_dirac = 1/2 .* (Ω * Γ_out * Ω')
     H = Hermitian(-im .* Γ_out_dirac)
 
-    # # put annihilation in front of creation operators
-    # # (f_1, ..., f_N, f†_1, ..., f†_N)
-    # perm = vcat(1:2:(2N), 2:2:(2N))
-    # return Hermitian(H[perm, perm])
-
     return H
-
-    # Ω_single = [1 1;
-    #             im -im]
-    # Ω = ⊕(Ω_single, N)
-
-    # resulting fermion order is (f_1, f†_1, ..., f_N, f†_N)
-    # H = -0.5im .* Ω' * Γ_out * Ω
-
-
-
-    # put annihilation in front of creation operators
-    # (f_1, ..., f_N, f†_1, ..., f†_N)
-    # perm = vcat(1:2:(2N), 2:2:(2N))
-    # return Hermitian(H[perm, perm])
 end

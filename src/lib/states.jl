@@ -88,7 +88,7 @@ paired_state(Z) = paired_state(ComplexF64, Z)
 
 """
 Construct the local tensor of the fiducial state
-`exp(a† Z a† / 2)`, where A is an anti-symmetric matrix.
+`exp(a† Z a† / 2)`, where Z is an anti-symmetric matrix.
 
 Input complex fermion order should be
 (f_1, ..., f_{Nf}, l_1, r_1, ..., l_χ, r_χ, d_1, u_1, ..., d_χ, u_χ)

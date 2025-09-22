@@ -33,7 +33,7 @@ include("lib/constructor.jl")
 include("lib/loss.jl")
 include("lib/states.jl")
 include("lib/translate.jl")
-
+include("models/bcs.jl")
 
 include("exports.jl") # export functions
 

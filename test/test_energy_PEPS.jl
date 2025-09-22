@@ -31,6 +31,9 @@ P_full = BlockDiagonal([F, Matrix(I(8*Nv))])
 Γ_out_qq = P_full * Γ_out * P_full'
 @assert Γ_out_qq ≈ -transpose(Γ_out_qq)
 @assert Γ_out_qq^2 ≈ -I
+
+eigen(Γ_out_qq).values
+
 #= Bis hier GUT =#
 
 S0 = [1  1; im  -im]
@@ -38,6 +41,7 @@ S = kron(I(N), S0)
 
 # Γ_out_dirac_qq = S' * Γ_out_qq * S
 Γ_out_dirac_qq = inv(conj.(S)) * Γ_out_qq * inv(transpose(S))
+# Γ_out_dirac_qq = inv(conj.(S)) * Γ_out_qq * inv(S')
 perm = vcat(1:2:(2N), 2:2:(2N))
 Γ_out_dirac = Γ_out_dirac_qq[perm, perm]
 
@@ -82,8 +86,7 @@ R = Γ_out_dirac[N+1:end, N+1:end]
 @test R' ≈ -R
 @test transpose(Q) ≈ -Q
 
-
-eigen(Γ_out_dirac).values
+abs.(eigen(Γ_out_dirac).values)
 
 # H = GfPEPS.get_parent_hamiltonian(Γ_out, Nf, Nv)
 
@@ -91,22 +94,43 @@ H = Hermitian(-im .* Γ_out_dirac)
 
 E, M = GfPEPS.bogoliubov(H)
 
-_, M =  eigen(H)
+_, M =  eigen(H; sortby = (x -> -real(x)))
 U,V = GfPEPS.get_bogoliubov_blocks(M)
+V = conj.(V)
 @test U'U + V'V ≈ I
 @test transpose(U) * V ≈ - transpose(V) * U
 
 M'*H*M
 M'M ≈ I
 
-Z = -V \ U # pairing matrix
+Z = -conj(U) \ V # pairing matrix
+# Z = -conj(V) \ U # pairing matrix
+Z = (Z - transpose(Z)) / 2  # ensure exact antisymmetry
 
 peps = GfPEPS.translate(X, Nf, Nv)
 
-bz = GfPEPS.BrillouinZone2D(Lx,Ly,(:APBC,:PBC))
-G_in = GfPEPS.G_in_Fourier(bz, Nv)
-G_f = GfPEPS.GaussianMap(Γ_out, G_in, Nf, Nv)
+ω = GfPEPS.virtual_bond_state(Nv)
+A = GfPEPS.fiducial_state(Nf, Nv, Z)
+peps = GfPEPS.get_peps(ω, A)
+peps = peps / norm(peps)
 
-t, Δx, Δy, mu = 1.0, 0.3, -0.7, -0.4
-energy = GfPEPS.energy_loss(t, mu, bz, "d_wave", Δx, Δy)
-E_exact = energy(G_f)
+peps
+
+Espace = Vect[FermionParity](0 => 4, 1 => 4)
+env = CTMRGEnv(randn, ComplexF64, peps, Espace)
+# env = CTMRGEnv(randn, ComplexF64, peps)
+for χenv in [8, 16]
+    trscheme = truncdim(χenv)
+    env, = leading_boundary(
+        env, peps; tol = 1.0e-9, maxiter = 200, trscheme,
+        alg = :sequential, projector_alg = :fullinfinite
+    )
+end
+
+Δ_x = res.Δ_options["Δ_x"]
+Δ_y = res.Δ_options["Δ_y"]
+
+ham = GfPEPS.hamiltonian(ComplexF64, InfiniteSquare(1, 1); t=res.t, Δx = Δ_x, Δy = Δ_y, mu = res.μ)
+energy1 = expectation_value(peps, ham, env)
+# energy2 = BCS.energy_peps(G, bz, Np; Δx, Δy, t, mu)
+@info "PEPS energy per site" energy1
