@@ -23,6 +23,11 @@ function energy_loss(t::Real, μ::Real, bz::BrillouinZone2D, pairing_type::Strin
         @inbounds E = ξk_batched_summed - 0.5*(dot(ξk_batched, G13) + dot(ξk_batched, G24)) + 2*real(dot(Δk_batched, η))
         return real(E * invN)
 
+        # G12, G34, G41, G32, G31, G42 = CM_out[:, 1, 2], CM_out[:, 3, 4], CM_out[:, 4, 1], CM_out[:, 3, 2], CM_out[:, 3, 1], CM_out[:, 4, 2]
+        # η = 0.25 .* (G41 .+ G32 .+ im .* (G42 .- G31))
+        # @inbounds E = ξk_batched_summed - 0.5*(dot(ξk_batched, G12) + dot(ξk_batched, G34)) + 2*real(dot(Δk_batched, η))
+        # return real(E * invN)
+
         # #= 
         #     qq-ordering of Majorana modes: (c_1, c_2, ..., c_(2(4Nv + Nf)))
         # =#

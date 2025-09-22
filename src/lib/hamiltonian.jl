@@ -21,7 +21,7 @@ end
 Δ(::Val{:d_wave},k::AbstractVector{<:Real},Δ_x::Real,Δ_y::Real) = 2*(Δ_x*cos(k[1]) - Δ_y*cos(k[2]))
 Δ(::Val{:s_wave},k::AbstractVector{<:Real},Δ_0::Real) = 2*Δ_0
 Δ(::Val{:p_wave},k::AbstractVector{<:Real},Δ_x::Real,Δ_y::Real) = 2*((Δ_x*sin(k[1]) - Δ_y*sin(k[2])) + im*(Δ_x*sin(k[1]) + Δ_y*sin(k[2])))
-Δ(::Val{:default},k::AbstractVector{<:Real},Δ_0::Real) = im*2*Δ_0(sin(k[1]) + sin(k[2]))
+Δ(::Val{:default},k::AbstractVector{<:Real},Δ_x::Real,Δ_y::Real) = 2*(Δ_x*cos(k[1]) + Δ_y*cos(k[2]))
 function E(k::AbstractVector{<:Real},t::Real,μ::Real,pairing_type::String,Δ_kwargs...) 
     Δ_kwargs = (k,Δ_kwargs...) # match input format of Δ
     return sqrt(ξ(k,t,μ)^2 + abs(Δ(pairing_type, Δ_kwargs...))^2)
@@ -114,6 +114,25 @@ function bogoliubov(H::Hermitian)
     # @assert M' * H * M ≈ diagm(vcat(E[1:N], -E[1:N]))
     return E, M
 end
+# function bogoliubov(H::Hermitian)
+#     N = size(H, 1)
+#     E, W0 = eigen(H; sortby = (x -> -real(x)))
+#     n = div(N, 2)
+#     # construct the transformation W
+#     Wpos = W0[:, 1:n]
+#     U = Wpos[1:n, :]
+#     V = conj(Wpos[(n + 1):end, :])
+#     W = similar(W0)
+#     W[1:n, 1:n] = U
+#     W[1:n, (n + 1):(2n)] = V
+#     W[(n + 1):(2n), 1:n] = conj.(V)
+#     W[(n + 1):(2n), (n + 1):(2n)] = conj.(U)
+#     # check canonical constraint
+#     @assert W' * W ≈ I
+#     # check positiveness of energy
+#     @assert all(E[1:n] .> 0)
+#     return E[1:n], Matrix(W')
+# end
 
 #======================================================================================
 Functions to solve μ from hole density

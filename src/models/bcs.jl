@@ -35,6 +35,13 @@ function cal_xi(k::Vector{Float64}; t::Float64, mu::Float64)
     return -2t * (cos(2π * k[1]) + cos(2π * k[2])) - mu
 end
 
+"""
+Check if a 2-site bond is a nearest neighbor x-bond
+"""
+function _is_xbond(bond)
+    return bond[2] - bond[1] == CartesianIndex(0, 1)
+end
+
 function cal_Delta(k::Vector{Float64}; Δx::Float64, Δy::Float64)
     return 2Δx * cos(2π * k[1]) + 2Δy * cos(2π * k[2])
 end
@@ -50,49 +57,49 @@ end
 
 # ---- exact values of observables from Hamiltonian ----
 
-"""
-The exact ground state energy per site of a BCS mean field Hamiltonian
-on a finite lattice specified by the BrillouinZone `bz`.
-"""
-function energy_exact(
-        bz::BrillouinZone;
-        t::Float64 = 1.0, Δx::Float64 = 0.5, Δy::Float64 = -0.5, mu::Float64 = 0.0
-    )
-    return mean(
-        map(bz.ks) do k
-            cal_xi(k; t, mu) - cal_E(k; t, Δx, Δy, mu)
-        end
-    )
-end
+# """
+# The exact ground state energy per site of a BCS mean field Hamiltonian
+# on a finite lattice specified by the BrillouinZone `bz`.
+# """
+# function energy_exact(
+#         bz::BrillouinZone;
+#         t::Float64 = 1.0, Δx::Float64 = 0.5, Δy::Float64 = -0.5, mu::Float64 = 0.0
+#     )
+#     return mean(
+#         map(bz.ks) do k
+#             cal_xi(k; t, mu) - cal_E(k; t, Δx, Δy, mu)
+#         end
+#     )
+# end
 
-"""
-Calculate doping for a given `mu`
-"""
-function doping_exact(
-        bz::BrillouinZone; t::Float64 = 1.0,
-        Δx::Float64 = 0.5, Δy::Float64 = -0.5, mu::Float64 = 0.0
-    )
-    return mean(
-        map(bz.ks) do k
-            ξ = cal_xi(k; t, mu)
-            Δ = cal_Delta(k; Δx, Δy)
-            E = sqrt(ξ^2 + Δ^2)
-            return ξ / E
-        end
-    )
-end
+# """
+# Calculate doping for a given `mu`
+# """
+# function doping_exact(
+#         bz::BrillouinZone; t::Float64 = 1.0,
+#         Δx::Float64 = 0.5, Δy::Float64 = -0.5, mu::Float64 = 0.0
+#     )
+#     return mean(
+#         map(bz.ks) do k
+#             ξ = cal_xi(k; t, mu)
+#             Δ = cal_Delta(k; Δx, Δy)
+#             E = sqrt(ξ^2 + Δ^2)
+#             return ξ / E
+#         end
+#     )
+# end
 
-"""
-Solve for the value of `mu` at a given doping `δ`
-"""
-function solve_mu(
-        bz::BrillouinZone, δ::Float64;
-        mu_range::NTuple{2, Float64} = (-5.0, 5.0),
-        t::Float64 = 1.0, Δx::Float64 = 0.5, Δy::Float64 = -0.5
-    )
-    mu = find_zero(x -> δ - doping_exact(bz; t, Δx, Δy, mu = x), mu_range)
-    return mu
-end
+# """
+# Solve for the value of `mu` at a given doping `δ`
+# """
+# function solve_mu(
+#         bz::BrillouinZone, δ::Float64;
+#         mu_range::NTuple{2, Float64} = (-5.0, 5.0),
+#         t::Float64 = 1.0, Δx::Float64 = 0.5, Δy::Float64 = -0.5
+#     )
+#     mu = find_zero(x -> δ - doping_exact(bz; t, Δx, Δy, mu = x), mu_range)
+#     return mu
+# end
 
 # ---- values of observables from fPEPS correlation matrix ----
 
@@ -100,98 +107,101 @@ end
 The energy of a Gaussian fPEPS evaluated from 
 the fiducial state correlation matrix `G`.
 """
-function energy_peps(
-        G::AbstractMatrix, bz::BrillouinZone, Np::Int;
+function energy_CM(
+        Γ_fiducial::AbstractMatrix, bz::BrillouinZone2D, Nf::Int;
         t::Float64 = 1.0, Δx::Float64 = 0.5, Δy::Float64 = -0.5, mu::Float64 = 0.0
     )
-    A, B, D = cormat_blocks(G, Np)
-    χ = div(size(G, 1) - 2 * Np, 8)
+    A = Γ_fiducial[1:2*Nf, 1:2*Nf]
+    B = Γ_fiducial[1:2*Nf, 2*Nf+1:end]
+    D = Γ_fiducial[2*Nf+1:end, 2*Nf+1:end]
+
+    χ = div(size(Γ_fiducial, 1) - 2 * Nf, 8)
     return mean(
-        map(bz.ks) do k
-            Gω = cormat_virtual(k, χ)
-            Gf = A + B * inv(D + Gω) * transpose(B)
-            ξ = cal_xi(k; t, mu)
-            Δ = cal_Delta(k; Δx, Δy)
+        map(eachcol(bz.kvals)) do k
+            G_in = G_in_single_k(k, χ)
+            Gf = A + B * inv(D + G_in) * transpose(B)
             return real(
-                ξ * (2 - Gf[1, 2] - Gf[3, 4]) / 2 -
-                    Δ * (Gf[4, 1] + Gf[3, 2] + 1.0im * (Gf[4, 2] - Gf[3, 1])) / 2
+                ξ(k,t,mu) * (2 - Gf[1, 2] - Gf[3, 4]) / 2 -
+                    Δ("default", k, Δx, Δy) * (Gf[4, 1] + Gf[3, 2] + 1.0im * (Gf[4, 2] - Gf[3, 1])) / 2
+                # ξ(k,t,mu) * (2 - Gf[1, 3] - Gf[2, 4]) / 2 -
+                #     Δ("default", k, Δx, Δy) * (Gf[1, 4] + Gf[3, 2] + 1.0im * (Gf[3, 4] - Gf[1, 2])) / 2
             )
         end
     )
 end
 
-"""
-The average doping `δ = 1 - (1/N) ∑_i ⟨f†_{iσ} f_{iσ}⟩`
-evaluated from the fiducial state correlation matrix `G`.
-"""
-function doping_peps(G::AbstractMatrix, bz::BrillouinZone, Np::Int)
-    A, B, D = cormat_blocks(G, Np)
-    χ = div(size(G, 1) - 2 * Np, 8)
-    return mean(
-        map(bz.ks) do k
-            Gω = cormat_virtual(k, χ)
-            Gf = A + B * inv(D + Gω) * transpose(B)
-            return real(Gf[1, 2] + Gf[3, 4]) / 2
-        end
-    )
-end
+# """
+# The average doping `δ = 1 - (1/N) ∑_i ⟨f†_{iσ} f_{iσ}⟩`
+# evaluated from the fiducial state correlation matrix `G`.
+# """
+# function doping_peps(G::AbstractMatrix, bz::BrillouinZone, Np::Int)
+#     A, B, D = cormat_blocks(G, Np)
+#     χ = div(size(G, 1) - 2 * Np, 8)
+#     return mean(
+#         map(bz.ks) do k
+#             Gω = cormat_virtual(k, χ)
+#             Gf = A + B * inv(D + Gω) * transpose(B)
+#             return real(Gf[1, 2] + Gf[3, 4]) / 2
+#         end
+#     )
+# end
 
-"""
-The average magnetization `<Sᵃ> = (1/2N) ∑_i σᵃ_{αβ} ⟨f†_{iα} f_{iβ}⟩`
-evaluated from the fiducial state correlation matrix `G`.
-"""
-function mags_peps(G::AbstractMatrix, bz::BrillouinZone, Np::Int)
-    A, B, D = cormat_blocks(G, Np)
-    χ = div(size(G, 1) - 2 * Np, 8)
-    N = prod(size(bz))
-    mags = zeros(Float64, 3)
-    for k in bz.ks
-        Gω = cormat_virtual(k, χ)
-        Gf = A + B * inv(D + Gω) * transpose(B)
-        mags[1] += real(Gf[4, 1] + Gf[2, 3]) / (4N)
-        mags[2] += real(Gf[3, 1] + Gf[4, 2]) / (4N)
-        mags[3] += real(Gf[2, 1] + Gf[3, 4]) / (4N)
-    end
-    return mags
-end
+# """
+# The average magnetization `<Sᵃ> = (1/2N) ∑_i σᵃ_{αβ} ⟨f†_{iα} f_{iβ}⟩`
+# evaluated from the fiducial state correlation matrix `G`.
+# """
+# function mags_peps(G::AbstractMatrix, bz::BrillouinZone, Np::Int)
+#     A, B, D = cormat_blocks(G, Np)
+#     χ = div(size(G, 1) - 2 * Np, 8)
+#     N = prod(size(bz))
+#     mags = zeros(Float64, 3)
+#     for k in bz.ks
+#         Gω = cormat_virtual(k, χ)
+#         Gf = A + B * inv(D + Gω) * transpose(B)
+#         mags[1] += real(Gf[4, 1] + Gf[2, 3]) / (4N)
+#         mags[2] += real(Gf[3, 1] + Gf[4, 2]) / (4N)
+#         mags[3] += real(Gf[2, 1] + Gf[3, 4]) / (4N)
+#     end
+#     return mags
+# end
 
-"""
-The average hopping `T_{i,i+v} = (1/N) ∑_i ⟨f†_{iσ} f_{i+v,σ}⟩ + c.c.`
-evaluated from the fiducial state correlation matrix `G`.
+# """
+# The average hopping `T_{i,i+v} = (1/N) ∑_i ⟨f†_{iσ} f_{i+v,σ}⟩ + c.c.`
+# evaluated from the fiducial state correlation matrix `G`.
 
-Note: the y-direction of `v` is opposite to the direction of increasing rows.
-"""
-function hopping_peps(G::AbstractMatrix, bz::BrillouinZone, Np::Int, v::Vector{Int})
-    @assert length(v) == 2
-    A, B, D = cormat_blocks(G, Np)
-    χ = div(size(G, 1) - 2 * Np, 8)
-    return mean(
-        map(bz.ks) do k
-            Gω = cormat_virtual(k, χ)
-            Gf = A + B * inv(D + Gω) * transpose(B)
-            return real(2 - Gf[1, 2] - Gf[3, 4]) * cos(2π * k' * v)
-        end
-    )
-end
+# Note: the y-direction of `v` is opposite to the direction of increasing rows.
+# """
+# function hopping_peps(G::AbstractMatrix, bz::BrillouinZone, Np::Int, v::Vector{Int})
+#     @assert length(v) == 2
+#     A, B, D = cormat_blocks(G, Np)
+#     χ = div(size(G, 1) - 2 * Np, 8)
+#     return mean(
+#         map(bz.ks) do k
+#             Gω = cormat_virtual(k, χ)
+#             Gf = A + B * inv(D + Gω) * transpose(B)
+#             return real(2 - Gf[1, 2] - Gf[3, 4]) * cos(2π * k' * v)
+#         end
+#     )
+# end
 
-"""
-The singlet pairing `Δ_{i,i+v} = (1/√2N) ∑_i ϵ_{αβ} ⟨f_{iα} f_{i+v,β}⟩`
+# """
+# The singlet pairing `Δ_{i,i+v} = (1/√2N) ∑_i ϵ_{αβ} ⟨f_{iα} f_{i+v,β}⟩`
 
-Note: the y-direction of `v` is opposite to the direction of increasing rows.
-"""
-function singlet_peps(G::AbstractMatrix, bz::BrillouinZone, Np::Int, v::Vector{Int})
-    @assert length(v) == 2
-    A, B, D = cormat_blocks(G, Np)
-    χ = div(size(G, 1) - 2 * Np, 8)
-    return mean(
-        map(bz.ks) do k
-            Gω = cormat_virtual(k, χ)
-            Gf = A + B * inv(D + Gω) * transpose(B)
-            return -sqrt(2) / 4 * cos(2π * k' * v) *
-                (Gf[1, 4] + Gf[2, 3] + 1.0im * (Gf[1, 3] - Gf[2, 4]))
-        end
-    )
-end
+# Note: the y-direction of `v` is opposite to the direction of increasing rows.
+# """
+# function singlet_peps(G::AbstractMatrix, bz::BrillouinZone, Np::Int, v::Vector{Int})
+#     @assert length(v) == 2
+#     A, B, D = cormat_blocks(G, Np)
+#     χ = div(size(G, 1) - 2 * Np, 8)
+#     return mean(
+#         map(bz.ks) do k
+#             Gω = cormat_virtual(k, χ)
+#             Gf = A + B * inv(D + Gω) * transpose(B)
+#             return -sqrt(2) / 4 * cos(2π * k' * v) *
+#                 (Gf[1, 4] + Gf[2, 3] + 1.0im * (Gf[1, 3] - Gf[2, 4]))
+#         end
+#     )
+# end
 
 """
 Gutzwiller projector from Hubbard (spin-1/2) 

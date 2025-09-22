@@ -16,6 +16,7 @@ Ly = res.Ly
 
 X = res.X_opt
 Γ_out = GfPEPS.Γ_fiducial(X, Nv, Nf)
+
 @assert Γ_out ≈ -transpose(Γ_out)
 @assert Γ_out^2 ≈ -I
 A = Γ_out[1:2Nf, 1:2Nf]
@@ -94,27 +95,28 @@ H = Hermitian(-im .* Γ_out_dirac)
 
 E, M = GfPEPS.bogoliubov(H)
 
-_, M =  eigen(H; sortby = (x -> -real(x)))
+# E, M =  eigen(H; sortby = (x -> -real(x)))
+det(M)
+
 U,V = GfPEPS.get_bogoliubov_blocks(M)
-V = conj.(V)
 @test U'U + V'V ≈ I
 @test transpose(U) * V ≈ - transpose(V) * U
 
 M'*H*M
 M'M ≈ I
 
-Z = -conj(U) \ V # pairing matrix
+Z = -U \ V # pairing matrix
+
+# Z = -conj(U) \ V # pairing matrix
 # Z = -conj(V) \ U # pairing matrix
 Z = (Z - transpose(Z)) / 2  # ensure exact antisymmetry
 
-peps = GfPEPS.translate(X, Nf, Nv)
+# peps = GfPEPS.translate(X, Nf, Nv)
 
 ω = GfPEPS.virtual_bond_state(Nv)
 A = GfPEPS.fiducial_state(Nf, Nv, Z)
 peps = GfPEPS.get_peps(ω, A)
-peps = peps / norm(peps)
-
-peps
+# peps = peps / norm(peps)
 
 Espace = Vect[FermionParity](0 => 4, 1 => 4)
 env = CTMRGEnv(randn, ComplexF64, peps, Espace)
@@ -133,4 +135,10 @@ end
 ham = GfPEPS.hamiltonian(ComplexF64, InfiniteSquare(1, 1); t=res.t, Δx = Δ_x, Δy = Δ_y, mu = res.μ)
 energy1 = expectation_value(peps, ham, env)
 # energy2 = BCS.energy_peps(G, bz, Np; Δx, Δy, t, mu)
-@info "PEPS energy per site" energy1
+
+G_in = GfPEPS.G_in_Fourier(bz, Nv)
+G_out = GaussianMap(Γ_out, G_in, Nf, Nv)
+energy2 = GfPEPS.energy_loss(res.t, res.μ, bz, res.Δ_options["pairing_type"], Δ_x, Δ_y)(G_out)
+
+@info "Energy per site (PEPS)" energy1
+@info "Energy per site (CM)" energy2

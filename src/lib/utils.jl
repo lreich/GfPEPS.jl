@@ -35,11 +35,38 @@ function rand_CM(Nf::Int, Nv::Int)
         X = rand_orth(2N)
         Γ = Γ_fiducial(X, Nv, Nf)
 
-        @show pfaffian(im .* Γ)
-        if pfaffian(im .* Γ) ≈ 1 # for pure BCS state with even parity Pf(iΓ) = +1
+        # @show pfaffian(im .* Γ)
+        # if pfaffian(im .* Γ) ≈ 1 # for pure BCS state with even parity Pf(iΓ) = +1
+        #     return Γ, X
+        # end
+
+        H = parent_Hamiltonian_BdG2(Γ)
+        E, W = bogoliubov(H)
+        if det(W) ≈ 1
             return Γ, X
         end
+
     end
+end
+
+"""
+Given a real correlation matrix G of Majorana fermions, construct 
+the BdG matrix of the parent Hamiltonian in terms of complex fermions.
+"""
+function parent_Hamiltonian_BdG2(G::AbstractMatrix)
+    @assert eltype(G) <: Real && G ≈ -transpose(G)
+    N = div(size(G, 1), 2)
+    # change to complex fermion basis
+    # c_{2j-1} = f_j + f†_j, c_{2i} = i(f_j - f†_j)
+    # resulting fermion order is (f_1, f†_1, ..., f_N, f†_N)
+    S0 = [1  1; im  -im]
+    W = kron(I(N), S0)
+
+    H = W' * (-0.5im * G) * W
+    # put annihilation in front of creation operators
+    # (f_1, ..., f_N, f†_1, ..., f†_N)
+    perm = vcat(1:2:(2N), 2:2:(2N))
+    return Hermitian(H[perm, perm])
 end
 
 # """
