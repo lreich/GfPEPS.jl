@@ -72,65 +72,6 @@ function has_dirac_points(bz::BrillouinZone2D, t::Real, μ::Real, pairing_type::
 end
 
 #======================================================================================
-Functions for Bogoliubov transformations
-======================================================================================#
-function get_bogoliubov_blocks(M::AbstractMatrix)
-    N = div(size(M, 1), 2)
-
-    U = M[1:N, 1:N]
-    V = M[N+1:end, 1:N]
-    # V = M[1:N, N+1:end]
-
-    return U, V
-end
-
-"""
-Bogoliubov transformation of a fermionic bilinear Hamiltonian `H`. Returns 
-- The (positive) energy spectrum `E`, in descending order;
-- The transformation `M = [U conj(V); V conj(U)]` (such that `M' * H * M = diagm(vcat(E, -E))`);
-"""
-function bogoliubov(H::Hermitian)
-    N = div(size(H, 1), 2)
-    E, M0 = eigen(H; sortby = (x -> -real(x)))
-
-    U = M0[1:N, 1:N]
-    V = M0[N+1:end, 1:N]
-
-    # bring to correct form
-    M = similar(M0)
-    M[1:N, 1:N] = U
-    M[N+1:end, 1:N] = V
-    M[1:N, N+1:end] = conj.(V)
-    M[N+1:end, N+1:end] = conj.(U)
-
-    # check canonical constraints
-    @assert M' * M ≈ I
-    @assert U'U + V'V ≈ I
-    @assert transpose(U) * V ≈ - transpose(V) * U
-    
-    return E, M
-end
-# function bogoliubov(H::Hermitian)
-#     N = size(H, 1)
-#     E, W0 = eigen(H; sortby = (x -> -real(x)))
-#     n = div(N, 2)
-#     # construct the transformation W
-#     Wpos = W0[:, 1:n]
-#     U = Wpos[1:n, :]
-#     V = conj(Wpos[(n + 1):end, :])
-#     W = similar(W0)
-#     W[1:n, 1:n] = U
-#     W[1:n, (n + 1):(2n)] = V
-#     W[(n + 1):(2n), 1:n] = conj.(V)
-#     W[(n + 1):(2n), (n + 1):(2n)] = conj.(U)
-#     # check canonical constraint
-#     @assert W' * W ≈ I
-#     # check positiveness of energy
-#     @assert all(E[1:n] .> 0)
-#     return E[1:n], Matrix(W')
-# end
-
-#======================================================================================
 Functions to solve μ from hole density
 ======================================================================================#
 function exact_doping(bz::BrillouinZone2D, t::Real, μ::Real, Δ_x::Real, Δ_y::Real)

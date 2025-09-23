@@ -66,10 +66,10 @@ function translate(X::AbstractMatrix, Nf::Int, Nv::Int)
 
     H = get_parent_hamiltonian(Γ)
     _, M = bogoliubov(H)
-    # _, M =  eigen(H; sortby = (x -> -real(x)))
 
     U,V = get_bogoliubov_blocks(M)
     Z = V * inv(U) # pairing matrix 
+    @assert Z ≈ -transpose(Z) "Pairing matrix must be antisymmetric"
     Z = (Z - transpose(Z)) / 2  # ensure exact antisymmetry
 
     ω = virtual_bond_state(Nv)
@@ -141,9 +141,9 @@ function get_parent_hamiltonian(Γ::AbstractMatrix)
     N = div(size(Γ, 1), 2)
 
     # Transform to Dirac fermions (qq-ordering)
-    S0 = [1  1; im  -im]
-    S = kron(I(N), S0)
-    Γ_fiducial_dirac = 1/4 .* S' * Γ * S
+    Ω0 = [1  1; im  -im]
+    Ω = kron(I(N), Ω0)
+    Γ_fiducial_dirac = 1/4 .* Ω' * Γ * Ω
 
     # bring to qp-ordering
     perm = vcat(1:2:(2N), 2:2:(2N))
