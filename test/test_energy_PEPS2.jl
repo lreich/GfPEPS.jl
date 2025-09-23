@@ -24,22 +24,27 @@ B = Γ_fiducial[1:2Nf, 2Nf+1:end]
 @assert D ≈ -transpose(D)
 @assert all(isreal.(B))
 
-# #= Test transformation to Dirac =#
-# F = GfPEPS.qp_to_qq_ordering_transformation(Nf)
-# P_full = BlockDiagonal([F, Matrix(I(8*Nv))])
-# Γ_fiducial_qq = P_full * Γ_fiducial * P_full'
-# @assert Γ_fiducial_qq ≈ -transpose(Γ_fiducial_qq)
-# @assert Γ_fiducial_qq^2 ≈ -I
+#= Test transformation to Dirac =#
+F = GfPEPS.qp_to_qq_ordering_transformation(Nf)
+P_full = BlockDiagonal([F, Matrix(I(8*Nv))])
+Γ_fiducial_qq = P_full * Γ_fiducial * P_full'
+@assert Γ_fiducial_qq ≈ -transpose(Γ_fiducial_qq)
+@assert Γ_fiducial_qq^2 ≈ -I
 
 S0 = [1  1; im  -im]
 S = kron(I(N), S0)
 
+transpose(S) * Γ_fiducial * conj.(S)
+S' * Γ_fiducial * S
+
+
+Γ_fiducial_dirac_qq = 1/2 .* transpose(S) * Γ_fiducial_qq * conj.(S)
 # Γ_fiducial_dirac_qq = inv(conj.(S)) * Γ_fiducial_qq * inv(transpose(S))
-# # Γ_fiducial_dirac_qq = inv(conj.(S)) * Γ_fiducial_qq * inv(S')
-# perm = vcat(1:2:(2N), 2:2:(2N))
-# Γ_fiducial_dirac = Γ_fiducial_dirac_qq[perm, perm]
+# Γ_fiducial_dirac_qq = inv(conj.(S)) * Γ_fiducial_qq * inv(S')
+perm = vcat(1:2:(2N), 2:2:(2N))
+Γ_fiducial_dirac = Γ_fiducial_dirac_qq[perm, perm]
 # @assert Γ_fiducial_dirac' ≈ -Γ_fiducial_dirac # anti hermitian
-# @assert 4 .* Γ_fiducial_dirac*Γ_fiducial_dirac' ≈ I
+# @assert Γ_fiducial_dirac*Γ_fiducial_dirac' ≈ I / 4
 # R_conj = Γ_fiducial_dirac[1:N, 1:N]
 # Q_conj = Γ_fiducial_dirac[1:N, N+1:end]
 # Q = Γ_fiducial_dirac[N+1:end, 1:N]
@@ -53,7 +58,7 @@ H = (S' * (-0.5im * Γ_fiducial) * S)
 perm = vcat(1:2:(2N), 2:2:(2N))
 H = Hermitian(H[perm, perm])
 
-# H = Hermitian(-im .* Γ_fiducial_dirac)
+H = Hermitian(-im/4 .* Γ_fiducial_dirac)
 
 E, M = GfPEPS.bogoliubov(H)
 U,V = GfPEPS.get_bogoliubov_blocks(M)
@@ -79,7 +84,7 @@ U,V = GfPEPS.get_bogoliubov_blocks(M)
 # U' ≈ U2
 # V' ≈ V2
 
-Z = -inv(U')*V'
+# Z = -inv(U')*V'
 # Z2 = -inv(U2) * V2
 
 #=  =#
@@ -87,6 +92,8 @@ Z = -inv(U')*V'
 @test U'U + V'V ≈ I
 @test transpose(U) * V ≈ - transpose(V) * U
 
+Z = U * inv(V)
+@test Z ≈ -transpose(Z)
 # Z = -U \ V # pairing matrix
 # Z = -conj(U) \ V # pairing matrix
 # Z = -U \ conj(V) # pairing matrix
@@ -106,10 +113,10 @@ peps = GfPEPS.get_peps(ω, A)
 Espace = Vect[FermionParity](0 => 4, 1 => 4)
 env = CTMRGEnv(randn, ComplexF64, peps, Espace)
 # env = CTMRGEnv(randn, ComplexF64, peps)
-for χenv in [8, 16]
+for χenv in [8, 16, 32]
     trscheme = truncdim(χenv)
     env, = leading_boundary(
-        env, peps; tol = 1.0e-9, maxiter = 200, trscheme,
+        env, peps; tol = 1.0e-10, maxiter = 300, trscheme,
         alg = :sequential, projector_alg = :fullinfinite
     )
 end
@@ -118,8 +125,8 @@ t = 1.0
 μ = 1.0
 Δ_x = 1.0
 Δ_y = 1.0
-Lx = 201
-Ly = 201
+Lx = 128
+Ly = 128
 
 ham = GfPEPS.hamiltonian(ComplexF64, InfiniteSquare(1, 1); t=t, Δx = Δ_x, Δy = Δ_y, mu = μ)
 energy1 = expectation_value(peps, ham, env)
