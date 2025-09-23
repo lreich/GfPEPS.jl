@@ -63,7 +63,7 @@ Checks if there are Dirac points (zero-energy modes) in the energy spectrum over
 function has_dirac_points(bz::BrillouinZone2D, t::Real, μ::Real, pairing_type::String, Δ_kwargs...)
     dirac_point_found = false
     for k in eachcol(bz.kvals)
-        if isapprox(E(k,t,μ,pairing_type,Δ_kwargs...), 0.0; atol = 1e-13)
+        if isapprox(E(k,t,μ,pairing_type,Δ_kwargs...), 0.0; atol = 1e-6)
             @warn ("Dirac point found at k = $k. This may lead to convergence issues during optimization.")
             dirac_point_found = true
         end

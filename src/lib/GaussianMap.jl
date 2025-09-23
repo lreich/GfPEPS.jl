@@ -23,7 +23,7 @@ end
 """
     G_in_single_k(k::AbstractVector{<:Real}, Nv::Integer)
 
-Returns the Fourier transformed (F) covariance matrix for one k value.
+Returns the Fourier transformed covariance matrix for one k value.
 
 The ordering of the majorana modes is (lrud) for each virtual fermion, i.e., (c_l1^1, c_l1^2, c_r1^1, c_r1^2, ..., c_lNv^1, c_lNv^2, c_rNv^1, c_rNv^2, c_u1^1, c_u1^2, c_d1^1, c_d1^2, ..., c_uNv^1, c_uNv^2, c_dNv^1, c_dNv^2) 
 
@@ -34,6 +34,31 @@ function G_in_single_k(k::AbstractVector{<:Real}, Nv::Integer)
     return Matrix(BlockDiagonal([⊕(helper(k[1]), Nv),⊕(helper(k[2]), Nv)]))
     # return Matrix(BlockDiagonal([⊕(helper(k[1]), Nv),⊕(helper(-k[2]), Nv)]))
 end
+
+function G_in_single_k!(Gin::AbstractMatrix{ComplexF64}, k::AbstractVector{<:Real}, Nv::Integer)
+    @assert size(Gin,1) == 8Nv && size(Gin,2) == 8Nv
+    fill!(Gin, 0.0 + 0.0im)
+
+    hx = helper(k[1])
+    hy = helper(k[2])
+
+    # Horizontal blocks
+    @inbounds for i in 0:Nv-1
+        r = 4i + 1
+        Gin[r:r+3, r:r+3] = hx
+    end
+
+    # Vertical blocks
+    off = 4Nv
+    @inbounds for i in 0:Nv-1
+        r = off + 4i + 1
+        Gin[r:r+3, r:r+3] = hy
+    end
+
+    return Gin
+end
+
+Zygote.@nograd G_in_single_k!
 
 """
     G_in_Fourier(bz::BrillouinZone2D, Nv::Int)
@@ -117,4 +142,10 @@ function GaussianMap(CM_out::AbstractMatrix, CM_in::AbstractArray, Nf::Int, Nv::
     # mats = map(s -> B * ((D .- s) \ transpose(B)) .+ A, eachslice(CM_in; dims=1)) # Kraus thesis
     mats = map(s -> B * ((D .+ s) \ transpose(B)) .+ A, eachslice(CM_in; dims=1)) # Hong hao paper
     return cat(mats...; dims=3) |> x -> permutedims(x, (3,1,2))
+end
+
+function GaussianMap_single_k(A::AbstractMatrix, B::AbstractMatrix, D::AbstractMatrix, CM_in::AbstractMatrix, Nf::Int, Nv::Int)
+    Bt = transpose(B)
+
+    return B * ((D .+ CM_in .+ 1e-8 .* I(size(CM_in))) \ Bt) .+ A
 end

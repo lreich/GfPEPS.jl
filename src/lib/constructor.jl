@@ -75,32 +75,41 @@ mutable struct Gaussian_fPEPS
             μ = solve_for_mu(bz,δ,t,Δ_x,Δ_y)
         end
 
+        # First, find a better initial guess for X by solving for smaller system sizes (see: 10.1103/PhysRevLett.129.206401) 
+        @info "Finding better initial guess for X by solving smaller system sizes..."
+        Lx_init = isodd(Lx) ? 5 : 6
+        Ly_init = isodd(Ly) ? 5 : 6
+        bz_init = BrillouinZone2D(Lx_init,Ly_init,bc)
+        has_dirac_points(bz_init,t,μ,pairing_type,Δ_vec...) # warn if dirac points are present
+
         # build loss function
-        loss = optimize_loss(t, μ, bz, Nf, Nv, pairing_type, Δ_vec...)
+        loss = optimize_loss(t, μ, bz_init, Nf, Nv, pairing_type, Δ_vec...)
+        # loss = optimize_loss_per_k(t, μ, bz_init, Nf, Nv, pairing_type, Δ_vec...)
 
         # build gradients
         g(x) = first(Zygote.gradient(loss, x))
         g!(G,x) = copyto!(G, g(x)) # better for optim
 
-        # First, find a better initial guess for X by solving for smaller system sizes (see: 10.1103/PhysRevLett.129.206401) 
-        @info "Finding better initial guess for X by solving smaller system sizes..."
-        Lx_init = 5
-        Ly_init = 5
-        bz_init = BrillouinZone2D(Lx_init,Ly_init,bc)
-        has_dirac_points(bz_init,t,μ,pairing_type,Δ_vec...) # warn if dirac points are present
-        loss = optimize_loss(t, μ, bz_init, Nf, Nv, pairing_type,Δ_vec...)
-        res_init = Optim.optimize(loss, g!, X, Optim.ConjugateGradient(manifold=Optim.Stiefel()), Optim.Options(
-        # res_init = Optim.optimize(loss, g!, X, Optim.LBFGS(;m=20,manifold=Optim.Stiefel()), Optim.Options(
+        # res_init = Optim.optimize(loss, g!, X, Optim.ConjugateGradient(manifold=Optim.Stiefel()), Optim.Options(
+        res_init = Optim.optimize(loss, g!, X, Optim.LBFGS(;m=20,manifold=Optim.Stiefel()), Optim.Options(
             iterations = conf["params"]["maxiter"],
             g_tol = conf["params"]["grad_tol"],
             show_trace = conf["params"]["show_trace"]
         ))
 
         @info "Finding optimal X for full system size..."
-        loss = optimize_loss(t, μ, bz, Nf, Nv, pairing_type, Δ_vec...)
         has_dirac_points(bz,t,μ,pairing_type,Δ_vec...) # warn if dirac points are present
+        # build loss function
+        loss = optimize_loss(t, μ, bz, Nf, Nv, pairing_type, Δ_vec...)
+        # loss = optimize_loss_per_k(t, μ, bz, Nf, Nv, pairing_type, Δ_vec...)
+
+        # build gradients
+        g(x) = first(Zygote.gradient(loss, x))
+        g!(G,x) = copyto!(G, g(x)) # better for optim
+
         # optimize X for the full system size
-        res = Optim.optimize(loss, g!, Optim.minimizer(res_init), Optim.ConjugateGradient(manifold=Optim.Stiefel()), Optim.Options(
+        # res = Optim.optimize(loss, g!, Optim.minimizer(res_init), Optim.ConjugateGradient(manifold=Optim.Stiefel()), Optim.Options(
+        res = Optim.optimize(loss, g!, Optim.minimizer(res_init), Optim.LBFGS(;m=20,manifold=Optim.Stiefel()), Optim.Options(
             iterations = conf["params"]["maxiter"],
             g_tol = conf["params"]["grad_tol"],
             show_trace = conf["params"]["show_trace"]

@@ -15,7 +15,6 @@ N = (Nf + 4*Nv)
 
 Γ_fiducial, X = GfPEPS.rand_CM(Nf,Nv)
 
-
 # @assert Γ_fiducial ≈ -transpose(Γ_fiducial)
 # @assert Γ_fiducial^2 ≈ -I
 # A = Γ_fiducial[1:2Nf, 1:2Nf]
@@ -124,7 +123,7 @@ Espace = Vect[FermionParity](0 => 4, 1 => 4)
 env = CTMRGEnv(randn, ComplexF64, peps, Espace)
 # env = CTMRGEnv(randn, ComplexF64, peps)
 for χenv in [8, 16]
-    trscheme = truncdim(χenv)
+    trscheme = truncdim(χenv) & truncerr(1.0e-12)
     env, = leading_boundary(
         env, peps; tol = 1.0e-11, maxiter = 200, trscheme,
         alg = :sequential, projector_alg = :fullinfinite

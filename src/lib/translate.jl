@@ -2,23 +2,23 @@
 Get PEPS tensor by contracting virtual axes of ⟨ω|F⟩,
 where |ω⟩, |F⟩ are the virtual and the fiducial states.
 ```
-            -1
+            -2
             ↓
             ω
             ↑
-            1  -3
+            1  -1
             ↑ ↗
-    -2  --←-F-→- 2 -→-ω-←- -5
+    -5  --←-F-→- 2 -→-ω-←- -3
             ↓
             -4
 ```
 Input axis order
 ```
-        4  1                2
+        5  1                2
         ↑ ↗                 ↑
     2-←-F-→-3   1-←-ω-→-2   ω
         ↓                   ↓
-        5                   1
+        4                   1
 ```
 """
 function get_peps(ω::AbstractTensor{T, S, N1}, F::AbstractTensor{T, S, N2}) where {T, S, N1, N2}
@@ -48,7 +48,8 @@ function get_peps(ω::AbstractTensor{T, S, N1}, F::AbstractTensor{T, S, N2}) whe
 
     # contract virtual legs by computing: A=⟨ω|F⟩
     @tensor A[-1; -2 -3 -4 -5] := conj(ω[1 -2]) * conj(ω[2 -3]) * F[-1 -5 2 -4 1]
-
+    # @tensor A[-1; -2 -3 -4 -5] := conj(ω[3 -4]) * conj(ω[2 -3]) * F[-1 -2 2 3 -5]
+    
     return InfinitePEPS(A; unitcell = (1, 1))
 end
 
