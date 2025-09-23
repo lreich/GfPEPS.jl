@@ -48,7 +48,7 @@ mutable struct Gaussian_fPEPS
 
         # build Δ_vec from dict
         Δ_vec = begin
-            if pairing_type == "d_wave" || pairing_type == "p_wave"
+            if pairing_type == "d_wave" || pairing_type == "p_wave" || pairing_type == "default"
                 [Δ_options["Δ_x"], Δ_options["Δ_y"]]
             elseif pairing_type == "s_wave"
                 [Δ_options["Δ_0"]]
@@ -68,14 +68,8 @@ mutable struct Gaussian_fPEPS
         X = U*V'
         
         # ensure correct parity sector
-        for _ in 1:10
-            X = rand_orth(2N)
-            Γ = Γ_fiducial(X, Nv, Nf)
-            if pfaffian(im .* Γ) ≈ 1 # for pure BCS state with even parity Pf(iΓ) = +1
-                @info "Created initial covariance matrix with even parity sector"
-                break
-            end
-        end
+        _, X = rand_CM(Nf,Nv)
+        @info "Created initial covariance matrix with even parity sector"
 
         if(conf["hamiltonian"]["μ_from_hole_density"])
             μ = solve_for_mu(bz,δ,t,Δ_x,Δ_y)

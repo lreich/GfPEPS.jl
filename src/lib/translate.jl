@@ -57,20 +57,19 @@ Translate the orthogonal matrix `X` defining the fiducial state's covariance mat
 to Gaussian fPEPS in PEPSKit format.
 """
 function translate(X::AbstractMatrix, Nf::Int, Nv::Int)
-    N = Nf + 4Nv
+    @assert X*X' ≈ I "X must be orthogonal"
     Γ = Γ_fiducial(X, Nv, Nf)
 
     @assert Γ ≈ -transpose(Γ) "Covariance matrix must be antisymmetric"
     @assert Γ * Γ ≈ -I "Covariance matrix must satisfy Γ² = -I for a pure Gaussian state"
-    @assert pfaffian(im .* Γ) ≈ 1  "Pure BCS states must have even parity Pf(iΓ) = +1"
+    @assert pfaffian(Γ) ≈ 1  "Pure BCS states must have even parity Pf(iΓ) = +1"
 
-    H = get_parent_hamiltonian(Γ, Nf, Nv)
-    # _, M = bogoliubov(H)
-    _, M =  eigen(H; sortby = (x -> -real(x)))
+    H = get_parent_hamiltonian(Γ)
+    _, M = bogoliubov(H)
+    # _, M =  eigen(H; sortby = (x -> -real(x)))
 
     U,V = get_bogoliubov_blocks(M)
-    # Z = -inv(U) * V # pairing matrix 
-    Z = -conj(U) \ V # pairing matrix
+    Z = V * inv(U) # pairing matrix 
     Z = (Z - transpose(Z)) / 2  # ensure exact antisymmetry
 
     ω = virtual_bond_state(Nv)
@@ -134,48 +133,24 @@ end
 
 
 """
-    get_parent_hamiltonian(Γ_out::AbstractMatrix, Nf::Int, Nv::Int)
+    get_parent_hamiltonian(Γ::AbstractMatrix)
 
-Given the output correlation matrix Γ_out in Majorana representation, return the parent Hamiltonian in Dirac fermions.
+Return the parent Hamiltonian in Dirac representation (qp-ordering) of the fiducial state correlation matrix `Γ` in Majorana representation (qq-ordering).
 """
-function get_parent_hamiltonian(X::AbstractMatrix, Nf::Int, Nv::Int)
-    @assert X*X' ≈ I "X must be orthogonal"
-    N = div(size(X, 1), 2)
+function get_parent_hamiltonian(Γ::AbstractMatrix)
+    N = div(size(Γ, 1), 2)
 
-    # construct covariance matrix of the fiducial state from X
-    Γ_out = Γ_fiducial(X, Nv, Nf)
-    @assert Γ_out ≈ -transpose(Γ_out) "Fiducial state CM must be antisymmetric"
-    @assert Γ_out^2 ≈ -I "Fiducial state CM must be pure"
-
-    # bring majoranas of physical fermions to qq ordering
-    F = qp_to_qq_ordering_transformation(Nf)
-    P = BlockDiagonal([F, Matrix(I(8*Nv))]) # full permutation matrix
-    Γ_out_qq = P * Γ_out * P'
-    @assert Γ_out_qq ≈ -transpose(Γ_out_qq)
-    @assert Γ_out_qq^2 ≈ -I
-
-    # Now transform to Dirac fermions in qq ordering
+    # Transform to Dirac fermions (qq-ordering)
     S0 = [1  1; im  -im]
     S = kron(I(N), S0)
-    Γ_out_dirac_qq = inv(conj.(S)) * Γ_out_qq * inv(transpose(S))
+    Γ_fiducial_dirac = 1/4 .* S' * Γ * S
 
-    # bring to qp ordering
+    # bring to qp-ordering
     perm = vcat(1:2:(2N), 2:2:(2N))
-    Γ_out_dirac = Γ_out_dirac_qq[perm, perm]
+    Γ_fiducial_dirac = Γ_fiducial_dirac[perm, perm]
 
-    @assert Γ_out_dirac' ≈ -Γ_out_dirac "Fiducial state CM in Dirac representation must be anti-hermitian"
-    @assert Γ_out_dirac*Γ_out_dirac' ≈ I ./ 4 "Fiducial state CM in Dirac representation must be pure"
+    @assert Γ_fiducial_dirac' ≈ -Γ_fiducial_dirac "Fiducial state CM in Dirac representation must be anti-hermitian"
+    @assert Γ_fiducial_dirac*Γ_fiducial_dirac' ≈ I / 4 "Fiducial state CM in Dirac representation must be pure"
 
-    R_conj = Γ_out_dirac[1:N, 1:N]
-    Q_conj = Γ_out_dirac[1:N, N+1:end]
-    Q = Γ_out_dirac[N+1:end, 1:N]
-    R = Γ_out_dirac[N+1:end, N+1:end]
-    @assert R_conj ≈ conj(R)
-    @assert Q_conj ≈ conj(Q)
-    @assert R' ≈ -R
-    @assert transpose(Q) ≈ -Q
-
-    H = Hermitian(-im .* Γ_out_dirac)
-
-    return H
+    return Hermitian(-2im .* Γ_fiducial_dirac)
 end

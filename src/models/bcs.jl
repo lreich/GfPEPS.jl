@@ -120,11 +120,14 @@ function energy_CM(
         map(eachcol(bz.kvals)) do k
             G_in = G_in_single_k(k, χ)
             Gf = A + B * inv(D + G_in) * transpose(B)
+            # qq ordering of Majorana modes: (c_1, c_2, ..., c_(2(4Nv + Nf)))
             return real(
-                ξ(k,t,mu) * (2 - Gf[1, 2] - Gf[3, 4]) / 2 -
-                    Δ("default", k, Δx, Δy) * (Gf[4, 1] + Gf[3, 2] + 1.0im * (Gf[4, 2] - Gf[3, 1])) / 2
-                # ξ(k,t,mu) * (2 - Gf[1, 3] - Gf[2, 4]) / 2 -
-                #     Δ("default", k, Δx, Δy) * (Gf[1, 4] + Gf[3, 2] + 1.0im * (Gf[3, 4] - Gf[1, 2])) / 2
+                # ξ(k,t,mu) * (2 - Gf[1, 2] - Gf[3, 4]) / 2 -
+                #     Δ("default", k, Δx, Δy) * (Gf[4, 1] + Gf[3, 2] + 1.0im * (Gf[4, 2] - Gf[3, 1])) / 2
+                ξ(k,t,mu) * (2 - Gf[1, 2] - Gf[3, 4]) / 2 +
+                    Δ("default", k, Δx, Δy) * (Gf[1, 4] + Gf[2, 3] + 1.0im * (Gf[2, 4] - Gf[1, 3])) / 2 
+                # ξ(k,t,mu) * (2 - Gf[1, 3] - Gf[2, 4]) / 2 +
+                #     Δ("default", k, Δx, Δy) * (Gf[1, 4] + Gf[3, 2] + 1.0im * (Gf[3, 4] - Gf[1, 2])) / 2 
             )
         end
     )

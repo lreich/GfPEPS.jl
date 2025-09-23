@@ -20,11 +20,11 @@
         "t": 1.0,
         "Δ_options":
             {
-                "pairing_type": "d_wave",
+                "pairing_type": "default",
                 "Δ_x": 1.0,
                 "Δ_y": 1.0
             },
-        "μ": 3.0 , 
+        "μ": 1.0, 
         "hole_density": 0.0,
         "μ_from_hole_density": false
     },

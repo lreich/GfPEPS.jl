@@ -35,16 +35,15 @@ function rand_CM(Nf::Int, Nv::Int)
         X = rand_orth(2N)
         Γ = Γ_fiducial(X, Nv, Nf)
 
-        # @show pfaffian(im .* Γ)
-        # if pfaffian(im .* Γ) ≈ 1 # for pure BCS state with even parity Pf(iΓ) = +1
-        #     return Γ, X
-        # end
-
-        H = parent_Hamiltonian_BdG2(Γ)
-        E, W = bogoliubov(H)
-        if det(W) ≈ 1
+        if pfaffian(Γ) ≈ 1 # for pure BCS state with even parity Pf(iΓ) = +1
             return Γ, X
         end
+
+        # H = parent_Hamiltonian_BdG2(Γ)
+        # E, W = bogoliubov(H)
+        # if det(W) ≈ 1
+        #     return Γ, X
+        # end
 
     end
 end

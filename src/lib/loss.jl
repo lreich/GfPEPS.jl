@@ -12,29 +12,24 @@ function energy_loss(t::Real, μ::Real, bz::BrillouinZone2D, pairing_type::Strin
     ξk_batched_summed = sum(ξk_batched)
 
     # divide by number of k-points
-    invN = 1.0 / size(k_vals, 2) # actually faster when precomputed as multiplication is faster than division
+    invN = 1.0 / size(k_vals, 2) # actually faster when precomputed, because multiplication is faster than division
 
     function energy(CM_out::AbstractArray)
-        #= 
-            qp-ordering of Majorana modes: (c_1, c_3, ..., c_(2(4Nv + Nf)-1), c_2, c_4, ..., c_(2(4Nv + Nf)))
-        =#
-        G13, G24, G14, G32, G34, G12 = CM_out[:, 1, 3], CM_out[:, 2, 4], CM_out[:, 1, 4], CM_out[:, 3, 2], CM_out[:, 3, 4], CM_out[:, 1, 2]
-        η = 0.25 .* (G14 .+ G32 .+ im .* (G34 .- G12))
-        @inbounds E = ξk_batched_summed - 0.5*(dot(ξk_batched, G13) + dot(ξk_batched, G24)) + 2*real(dot(Δk_batched, η))
-        return real(E * invN)
-
-        # G12, G34, G41, G32, G31, G42 = CM_out[:, 1, 2], CM_out[:, 3, 4], CM_out[:, 4, 1], CM_out[:, 3, 2], CM_out[:, 3, 1], CM_out[:, 4, 2]
-        # η = 0.25 .* (G41 .+ G32 .+ im .* (G42 .- G31))
-        # @inbounds E = ξk_batched_summed - 0.5*(dot(ξk_batched, G12) + dot(ξk_batched, G34)) + 2*real(dot(Δk_batched, η))
-        # return real(E * invN)
-
         # #= 
-        #     qq-ordering of Majorana modes: (c_1, c_2, ..., c_(2(4Nv + Nf)))
+        #     qp-ordering of Majorana modes: (c_1, c_3, ..., c_(2(4Nv + Nf)-1), c_2, c_4, ..., c_(2(4Nv + Nf)))
         # =#
-        # G12, G34, G14, G23, G24, G13 = CM_out[:, 1, 2], CM_out[:, 3, 4], CM_out[:, 1, 4], CM_out[:, 2, 3], CM_out[:, 2, 4], CM_out[:, 1, 3]
-        # η = 0.25 .* (G14 .+ G23 .+ im .* (G24 .- G13))
-        # @inbounds E = ξk_batched_summed - 0.5*(dot(ξk_batched, G12) + dot(ξk_batched, G34)) + 2*real(dot(Δk_batched, η))
+        # G13, G24, G14, G32, G34, G12 = CM_out[:, 1, 3], CM_out[:, 2, 4], CM_out[:, 1, 4], CM_out[:, 3, 2], CM_out[:, 3, 4], CM_out[:, 1, 2]
+        # η = 0.25 .* (G14 .+ G32 .+ im .* (G34 .- G12))
+        # @inbounds E = ξk_batched_summed - 0.5*(dot(ξk_batched, G13) + dot(ξk_batched, G24)) + 2*real(dot(Δk_batched, η))
         # return real(E * invN)
+
+        #= 
+            qq-ordering of Majorana modes: (c_1, c_2, ..., c_(2(4Nv + Nf)))
+        =#
+        G12, G34, G14, G23, G24, G13 = CM_out[:, 1, 2], CM_out[:, 3, 4], CM_out[:, 1, 4], CM_out[:, 2, 3], CM_out[:, 2, 4], CM_out[:, 1, 3]
+        η = 0.25 .* (G14 .+ G23 .+ im .* (G24 .- G13))
+        @inbounds E = ξk_batched_summed - 0.5*(dot(ξk_batched, G12) + dot(ξk_batched, G34)) + 2*real(dot(Δk_batched, η))
+        return real(E * invN)
     end
 
     return energy

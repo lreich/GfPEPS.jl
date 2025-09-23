@@ -104,14 +104,10 @@ function bogoliubov(H::Hermitian)
     M[N+1:end, N+1:end] = conj.(U)
 
     # check canonical constraints
-    # @assert M' * M ≈ I
-    # @assert U'U + V'V ≈ I
-    # @assert transpose(U) * V ≈ - transpose(V) * U
+    @assert M' * M ≈ I
+    @assert U'U + V'V ≈ I
+    @assert transpose(U) * V ≈ - transpose(V) * U
     
-    # # check positiveness of energy
-    # @assert all(E[1:N] .> 0)
-    # # check that M diagonalizes H
-    # @assert M' * H * M ≈ diagm(vcat(E[1:N], -E[1:N]))
     return E, M
 end
 # function bogoliubov(H::Hermitian)

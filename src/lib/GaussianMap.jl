@@ -73,7 +73,8 @@ Construct the covariance matrix for the fiducial state A from orthogonal matrix 
 Where A ∈ ℝ^(2Nf x 2Nf), B ∈ ℝ^(2Nf x 8Nv), D ∈ ℝ^(8Nv x 8Nv).
 A and D are antisymmetric.
 
-The modes of the A block are qp-ordered as: (c_1, c_3, ..., c_(2Nf-1), c_2, c_4, ..., c_(2Nf))
+# The modes of the A block are qp-ordered as: (c_1, c_3, ..., c_(2Nf-1), c_2, c_4, ..., c_(2Nf))
+The modes of the A block are qq-ordered as: (c_1, c_2, ..., c_(2Nf))
 The modes of the D block have the same ordering (lrud) as G_in_single_k, i.e., (c_l1^1, c_l1^2, c_r1^1, c_r1^2, ..., c_lNv^1, c_lNv^2, c_rNv^1, c_rNv^2, c_u1^1, c_u1^2, c_d1^1, c_d1^2, ..., c_uNv^1, c_uNv^2, c_dNv^1, c_dNv^2) 
 The modes of the B block are ordered as above.
 
@@ -84,6 +85,10 @@ Note:
 function Γ_fiducial(X::AbstractMatrix, Nv::Int, Nf::Int)
     # return transpose(X) * ⊕([0.0 1.0; -1.0 0.0],4*Nv+2) * X
     Γ = transpose(X) * build_J(Nv,Nf) * X
+
+    # F = GfPEPS.qp_to_qq_ordering_transformation(Nf)
+    # P_full = BlockDiagonal([F, Matrix(I(8*Nv))])
+    # Γ = P_full * Γ * P_full'
 
     return (Γ - transpose(Γ)) / 2 # ensure exact antisymmetry
 end
