@@ -3,14 +3,14 @@
         "N_physical_fermions_on_site": 2,
         "N_virtual_fermions_on_bond": 2,
         "seed": 1234,
-        "maxiter": 3000,
+        "maxiter": 20,
         "grad_tol": 1e-7,
-        "show_trace": false
+        "show_trace": true
     },
 
     "system_params":{
-        "Lx": 128,
-        "Ly": 128,
+        "Lx": 21,
+        "Ly": 21,
         "x_bc": "APBC",
         "y_bc": "PBC",
         "lattice_type": "square"

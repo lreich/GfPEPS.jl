@@ -83,23 +83,25 @@ mutable struct Gaussian_fPEPS
         has_dirac_points(bz_init,t,μ,pairing_type,Δ_vec...) # warn if dirac points are present
 
         # build loss function
-        loss = optimize_loss(t, μ, bz_init, Nf, Nv, pairing_type, Δ_vec...)
+        loss = get_loss_function_bcs(t, μ, bz, Nf, Nv, pairing_type, Δ_vec...)
+        # loss = optimize_loss(t, μ, bz_init, Nf, Nv, pairing_type, Δ_vec...)
         # loss = optimize_loss_per_k(t, μ, bz_init, Nf, Nv, pairing_type, Δ_vec...)
 
         # build gradients
-        g(x) = first(Zygote.gradient(loss, x))
-        g!(G,x) = copyto!(G, g(x)) # better for optim
+        g_init(x) = first(Zygote.gradient(loss, x))
+        g_init!(G,x) = copyto!(G, g_init(x)) # better for optim
 
         # res_init = Optim.optimize(loss, g!, X, Optim.ConjugateGradient(manifold=Optim.Stiefel()), Optim.Options(
-        res_init = Optim.optimize(loss, g!, X, Optim.LBFGS(;m=20,manifold=Optim.Stiefel()), Optim.Options(
-            iterations = conf["params"]["maxiter"],
-            g_tol = conf["params"]["grad_tol"],
-            show_trace = conf["params"]["show_trace"]
-        ))
+        # res_init = Optim.optimize(loss, g_init!, X, Optim.LBFGS(;m=20,manifold=Optim.Stiefel()), Optim.Options(
+        #     iterations = conf["params"]["maxiter"],
+        #     g_tol = conf["params"]["grad_tol"],
+        #     show_trace = conf["params"]["show_trace"]
+        # ))
 
         @info "Finding optimal X for full system size..."
         has_dirac_points(bz,t,μ,pairing_type,Δ_vec...) # warn if dirac points are present
         # build loss function
+        # loss = get_loss_function_bcs(t, μ, bz, Nf, Nv, pairing_type, Δ_vec...)
         loss = optimize_loss(t, μ, bz, Nf, Nv, pairing_type, Δ_vec...)
         # loss = optimize_loss_per_k(t, μ, bz, Nf, Nv, pairing_type, Δ_vec...)
 
@@ -109,10 +111,12 @@ mutable struct Gaussian_fPEPS
 
         # optimize X for the full system size
         # res = Optim.optimize(loss, g!, Optim.minimizer(res_init), Optim.ConjugateGradient(manifold=Optim.Stiefel()), Optim.Options(
-        res = Optim.optimize(loss, g!, Optim.minimizer(res_init), Optim.LBFGS(;m=20,manifold=Optim.Stiefel()), Optim.Options(
+        # res = Optim.optimize(loss, g!, Optim.minimizer(res_init), Optim.LBFGS(;m=20,manifold=Optim.Stiefel()), Optim.Options(
+        res = Optim.optimize(loss, g!, X, Optim.LBFGS(;m=100,manifold=Optim.Stiefel()), Optim.Options(
             iterations = conf["params"]["maxiter"],
             g_tol = conf["params"]["grad_tol"],
-            show_trace = conf["params"]["show_trace"]
+            show_trace = conf["params"]["show_trace"],
+            successive_f_tol = 10
         ))
 
         @show Optim.minimum(res)

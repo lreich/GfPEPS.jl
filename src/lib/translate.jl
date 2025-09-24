@@ -39,11 +39,11 @@ function get_peps(ω::AbstractTensor{T, S, N1}, F::AbstractTensor{T, S, N2}) whe
     fuser_virtual = isomorphism(Int, fuse(fill(V, Nv)...), reduce(⊗, fill(V, Nv)))
 
     # The maximally entangled bond state ω is in the full tensor product basis of the two virtual fermions (Λ flavors).
-    # We now transform ω to to the explicit tensor product basis of |l> ⊗ |r> ( or |u> ⊗ |d> ).
+    # We now transform ω to to the explicit tensor product basis of |l> ⊗ |r> ( or |d> ⊗ |u> ).
     ω = (fuser_virtual ⊗ fuser_virtual) * ω
 
     # The fiducial state F, obtained from the paired state is in the completed fused basis of all physical and auxiliary fermions.
-    # We now transform F to the explicit tensor product basis of |f> ⊗ |l> ⊗ |r> ⊗ |u> ⊗ |d>.
+    # We now transform F to the explicit tensor product basis of |f> ⊗ |l> ⊗ |r> ⊗ |d> ⊗ |u>.
     F = (fuser_physical ⊗ reduce(⊗, fill(fuser_virtual, 4))) * F 
 
     # contract virtual legs by computing: A=⟨ω|F⟩

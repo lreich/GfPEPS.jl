@@ -35,31 +35,6 @@ function G_in_single_k(k::AbstractVector{<:Real}, Nv::Integer)
     # return Matrix(BlockDiagonal([⊕(helper(k[1]), Nv),⊕(helper(-k[2]), Nv)]))
 end
 
-function G_in_single_k!(Gin::AbstractMatrix{ComplexF64}, k::AbstractVector{<:Real}, Nv::Integer)
-    @assert size(Gin,1) == 8Nv && size(Gin,2) == 8Nv
-    fill!(Gin, 0.0 + 0.0im)
-
-    hx = helper(k[1])
-    hy = helper(k[2])
-
-    # Horizontal blocks
-    @inbounds for i in 0:Nv-1
-        r = 4i + 1
-        Gin[r:r+3, r:r+3] = hx
-    end
-
-    # Vertical blocks
-    off = 4Nv
-    @inbounds for i in 0:Nv-1
-        r = off + 4i + 1
-        Gin[r:r+3, r:r+3] = hy
-    end
-
-    return Gin
-end
-
-Zygote.@nograd G_in_single_k!
-
 """
     G_in_Fourier(bz::BrillouinZone2D, Nv::Int)
 
@@ -89,7 +64,7 @@ end
 Zygote.@nograd build_J # constructing J is not something we need gradients through
 
 """
-    Γ_fiducial(X::AbstractMatrix, Nv::Int)
+    Γ_fiducial(X::AbstractMatrix, Nv::Int, Nf::Int)
 
 Construct the covariance matrix for the fiducial state A from orthogonal matrix X in the Majorana representation.
 We choose Γ to be qq-ordered.
@@ -114,6 +89,13 @@ function Γ_fiducial(X::AbstractMatrix, Nv::Int, Nf::Int)
     return (Γ - transpose(Γ)) / 2 # ensure exact antisymmetry
 end
 
+function get_Γ_blocks(Γ::AbstractMatrix, Nf::Int)
+    A = Γ[1:2*Nf, 1:2*Nf]
+    B = Γ[1:2*Nf, 2*Nf+1:end]
+    D = Γ[2*Nf+1:end, 2*Nf+1:end]
+    return A,B,D
+end
+
 """
     GaussianMap(CM_out::AbstractMatrix, CM_in::AbstractArray, Nf::Int, Nv::Int)
 
@@ -136,16 +118,14 @@ function GaussianMap(CM_out::AbstractMatrix, CM_in::AbstractArray, Nf::Int, Nv::
     A = CM_out[1:2*Nf, 1:2*Nf]
     B = CM_out[1:2*Nf, 2*Nf+1:end]
     D = CM_out[2*Nf+1:end, 2*Nf+1:end]
-    # Bt = transpose(B)
+    Bt = transpose(B)
 
     # Gaussian map for each (kx,ky)
     # mats = map(s -> B * ((D .- s) \ transpose(B)) .+ A, eachslice(CM_in; dims=1)) # Kraus thesis
-    mats = map(s -> B * ((D .+ s) \ transpose(B)) .+ A, eachslice(CM_in; dims=1)) # Hong hao paper
+    mats = map(s -> B * ((D .+ s) \ Bt) .+ A, eachslice(CM_in; dims=1)) # Hong hao paper
     return cat(mats...; dims=3) |> x -> permutedims(x, (3,1,2))
 end
 
-function GaussianMap_single_k(A::AbstractMatrix, B::AbstractMatrix, D::AbstractMatrix, CM_in::AbstractMatrix, Nf::Int, Nv::Int)
-    Bt = transpose(B)
-
-    return B * ((D .+ CM_in .+ 1e-8 .* I(size(CM_in))) \ Bt) .+ A
+function GaussianMap_single_k(A::AbstractMatrix, B::AbstractMatrix, D::AbstractMatrix, CM_in::AbstractMatrix)
+    return B * ((D + CM_in) \ transpose(B)) .+ A
 end
