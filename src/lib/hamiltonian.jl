@@ -3,7 +3,6 @@ using Statistics
 using Roots
 
 #= Energy functions when diagonalised via Fourier transform =#
-# in the paper it is - μ  but in the code it is + μ TODO: check sign convention
 ξ(k::AbstractVector{<:Real},t::Real,μ::Real) = -2t * (cos(k[1]) + cos(k[2])) - μ
 
 # different pairing types
