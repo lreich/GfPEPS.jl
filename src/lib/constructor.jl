@@ -15,15 +15,12 @@ mutable struct Gaussian_fPEPS
     # optimizer
     maxiter::Int # maximum iterations
     tol::Float64 # gradient tolerance
+    
+    X_opt::Matrix{Float64} # optimal orthogonal matrix X
+    peps::PEPSTensor # iPEPS tensor (PEPSKit.jl format)
 
-    # GfPEPS tensors
-    # tensors::Matrix{ITensor}
-
-    # test
-    X_opt::Matrix{Float64}
-    optim_res::Float64
-    exact_energy::Float64
-
+    exact_energy::Float64 # exact energy
+    optim_energy::Float64 # energy after optimization
 
     function Gaussian_fPEPS(;conf::Dict=parsefile(joinpath(GfPEPS.config_path, "conf_default_BCS.json")))
         Random.seed!(conf["params"]["seed"])
@@ -59,15 +56,13 @@ mutable struct Gaussian_fPEPS
 
         # construct Brillouin zone
         bz = BrillouinZone2D(Lx,Ly,bc)
+        has_dirac_points(bz,t,μ,pairing_type,Δ_vec...) # warn if dirac points are present
+        Lx_init = isodd(Lx) ? 5 : 6
+        Ly_init = isodd(Ly) ? 5 : 6
+        bz_init = BrillouinZone2D(Lx_init,Ly_init,bc)
+        has_dirac_points(bz_init,t,μ,pairing_type,Δ_vec...) # warn if dirac points are present
 
-        # initial ortogonal matrix X to construct Γ_out
-        Xsize = 8*Nv+Nf*2
-        X = rand(Xsize,Xsize)
-        # Orthogonalize the initial guess (already done above via SVD; keep as T0)
-        U,_,V = svd(X)
-        X = U*V'
-        
-        # ensure correct parity sector
+        # initial ortogonal matrix X to construct Γ_out with correct parity sector (even)
         _, X = rand_CM(Nf,Nv)
         @info "Created initial covariance matrix with even parity sector"
 
@@ -75,60 +70,44 @@ mutable struct Gaussian_fPEPS
             μ = solve_for_mu(bz,δ,t,Δ_x,Δ_y)
         end
 
-        # First, find a better initial guess for X by solving for smaller system sizes (see: 10.1103/PhysRevLett.129.206401) 
-        @info "Finding better initial guess for X by solving smaller system sizes..."
-        Lx_init = isodd(Lx) ? 5 : 6
-        Ly_init = isodd(Ly) ? 5 : 6
-        bz_init = BrillouinZone2D(Lx_init,Ly_init,bc)
-        has_dirac_points(bz_init,t,μ,pairing_type,Δ_vec...) # warn if dirac points are present
-
         # build loss function
-        loss = get_loss_function_bcs(t, μ, bz, Nf, Nv, pairing_type, Δ_vec...)
-        # loss = optimize_loss(t, μ, bz_init, Nf, Nv, pairing_type, Δ_vec...)
-        # loss = optimize_loss_per_k(t, μ, bz_init, Nf, Nv, pairing_type, Δ_vec...)
-
-        # build gradients
-        g_init(x) = first(Zygote.gradient(loss, x))
-        g_init!(G,x) = copyto!(G, g_init(x)) # better for optim
-
-        # res_init = Optim.optimize(loss, g!, X, Optim.ConjugateGradient(manifold=Optim.Stiefel()), Optim.Options(
-        # res_init = Optim.optimize(loss, g_init!, X, Optim.LBFGS(;m=20,manifold=Optim.Stiefel()), Optim.Options(
-        #     iterations = conf["params"]["maxiter"],
-        #     g_tol = conf["params"]["grad_tol"],
-        #     show_trace = conf["params"]["show_trace"]
-        # ))
-
-        @info "Finding optimal X for full system size..."
-        has_dirac_points(bz,t,μ,pairing_type,Δ_vec...) # warn if dirac points are present
-        # build loss function
-        # loss = get_loss_function_bcs(t, μ, bz, Nf, Nv, pairing_type, Δ_vec...)
+        loss_init = get_loss_function_bcs(t, μ, bz_init, Nf, Nv, pairing_type, Δ_vec...)
         loss = optimize_loss(t, μ, bz, Nf, Nv, pairing_type, Δ_vec...)
-        # loss = optimize_loss_per_k(t, μ, bz, Nf, Nv, pairing_type, Δ_vec...)
 
         # build gradients
+        g_init(x) = first(Zygote.gradient(loss_init, x))
+        g_init!(G,x) = copyto!(G, g_init(x)) # better for optim
         g(x) = first(Zygote.gradient(loss, x))
         g!(G,x) = copyto!(G, g(x)) # better for optim
 
-        # optimize X for the full system size
-        # res = Optim.optimize(loss, g!, Optim.minimizer(res_init), Optim.ConjugateGradient(manifold=Optim.Stiefel()), Optim.Options(
-        # res = Optim.optimize(loss, g!, Optim.minimizer(res_init), Optim.LBFGS(;m=20,manifold=Optim.Stiefel()), Optim.Options(
-        res = Optim.optimize(loss, g!, X, Optim.LBFGS(;m=100,manifold=Optim.Stiefel()), Optim.Options(
+        # First, find a better initial guess for X by solving for smaller system sizes (see: 10.1103/PhysRevLett.129.206401) 
+        @info "Finding better initial guess for X by solving smaller system sizes..."
+        # res_init = Optim.optimize(loss_init, g_init!, X, Optim.ConjugateGradient(manifold=Optim.Stiefel()), Optim.Options(
+        res_init = Optim.optimize(loss_init, g_init!, X, Optim.LBFGS(;m=20,manifold=Optim.Stiefel()), Optim.Options(
             iterations = conf["params"]["maxiter"],
             g_tol = conf["params"]["grad_tol"],
             show_trace = conf["params"]["show_trace"],
-            successive_f_tol = 10
+            successive_f_tol = 10,
+            f_reltol = conf["params"]["f_reltol"]
+        ))
+
+        @info "Finding optimal X for full system size..."
+        # optimize X for the full system size
+        # res = Optim.optimize(loss, g!, Optim.minimizer(res_init), Optim.ConjugateGradient(manifold=Optim.Stiefel()), Optim.Options(
+        res = Optim.optimize(loss, g!, Optim.minimizer(res_init), Optim.LBFGS(;m=20,manifold=Optim.Stiefel()), Optim.Options(
+        # res = Optim.optimize(loss, g!, X, Optim.LBFGS(;m=20,manifold=Optim.Stiefel()), Optim.Options(
+            iterations = conf["params"]["maxiter"],
+            g_tol = conf["params"]["grad_tol"],
+            show_trace = conf["params"]["show_trace"],
+            successive_f_tol = 10,
+            f_reltol = conf["params"]["f_reltol"]
         ))
 
         @show Optim.minimum(res)
         println("Exact energy:", exact_energy_BCS_k(bz,t,μ,pairing_type,Δ_vec...))
 
-        # X_opt = Optim.minimizer(res)
-
-        # U,V = bogoliubov_blocks_from_X(X_opt)
-        # Z,norm = pairing_from_X(X_opt)
-        # A_fiducial = fiducial_tensor_from_X(X_opt, Nf, Nv)
-
-        # display(A_fiducial)
+        @info "Building iPEPS from X..."
+        peps = translate(X, Nf, Nv)
 
         return new(
             Nf,
@@ -141,10 +120,10 @@ mutable struct Gaussian_fPEPS
             Δ_options,
             conf["params"]["maxiter"],
             conf["params"]["grad_tol"],
-            # zeros(ITensor, 0, 0),
             Optim.minimizer(res),
-            Optim.minimum(res),
-            exact_energy_BCS_k(bz,t,μ,pairing_type,Δ_vec...)
+            peps,
+            exact_energy_BCS_k(bz,t,μ,pairing_type,Δ_vec...),
+            Optim.minimum(res)
         )
     end
 end

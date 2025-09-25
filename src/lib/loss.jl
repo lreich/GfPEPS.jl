@@ -26,9 +26,8 @@ function energy_loss(t::Real, μ::Real, bz::BrillouinZone2D, pairing_type::Strin
         #= 
             qq-ordering of Majorana modes: (c_1, c_2, ..., c_(2(4Nv + Nf)))
         =#
-        G12, G34, G14, G23, G24, G13 = CM_out[:, 1, 2], CM_out[:, 3, 4], CM_out[:, 1, 4], CM_out[:, 2, 3], CM_out[:, 2, 4], CM_out[:, 1, 3]
-        η = 0.25 .* (G14 .+ G23 .+ im .* (G24 .- G13))
-        @inbounds E = ξk_batched_summed - 0.5*(dot(ξk_batched, G12) + dot(ξk_batched, G34)) + 2*real(dot(Δk_batched, η))
+        η = 0.25 .* (CM_out[:, 1, 4] .+ CM_out[:, 2, 3] .+ im .* (CM_out[:, 2, 4] .- CM_out[:, 1, 3]))
+        @inbounds E = ξk_batched_summed - 0.5*(dot(ξk_batched, CM_out[:, 1, 2]) + dot(ξk_batched, CM_out[:, 3, 4])) + 2*real(dot(Δk_batched, η))
         return real(E * invN)
     end
 
@@ -45,7 +44,7 @@ function optimize_loss(t::Real, μ::Real, bz::BrillouinZone2D, Nf::Int, Nv::Int,
     energy = energy_loss(t, μ, bz, pairing_type, Δ_kwargs...)
     function loss(X)
         # CM_out = GaussianMap(Γ_fiducial(X, Nv), G_in, Nf, Nv)
-        return real(energy(GaussianMap(Γ_fiducial(X, Nv, Nf), G_in, Nf, Nv)))
+        return real(energy(GaussianMap(get_Γ_blocks(Γ_fiducial(X, Nv, Nf), Nf)..., G_in)))
         # return real(energy(GaussianMap(Γ_fiducial(X, Nv, Nf), G_in, Nf, Nv)[1:2,:,:]))
     end
     return loss
