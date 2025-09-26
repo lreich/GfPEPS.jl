@@ -8,6 +8,8 @@ using TensorOperations
 using PEPSKit
 using TensorKit
 
+GfPEPS.virtual_bond_state(8)
+
 obj = Gaussian_fPEPS();
 X_opt = obj.X_opt
 G = GfPEPS.Γ_fiducial(X_opt, obj.Nv, obj.Nf)

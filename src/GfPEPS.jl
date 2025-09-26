@@ -12,6 +12,7 @@ using JSON: parsefile
 using Random
 using TensorOperations
 using SkewLinearAlgebra
+using MatrixFactorizations
 
 using SparseArrays: sparse, blockdiag, spdiagm
 using TensorKit

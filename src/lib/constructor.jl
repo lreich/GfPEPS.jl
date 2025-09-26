@@ -17,7 +17,7 @@ mutable struct Gaussian_fPEPS
     tol::Float64 # gradient tolerance
     
     X_opt::Matrix{Float64} # optimal orthogonal matrix X
-    peps::PEPSTensor # iPEPS tensor (PEPSKit.jl format)
+    # peps::InfinitePEPS # iPEPS tensor (PEPSKit.jl format)
 
     exact_energy::Float64 # exact energy
     optim_energy::Float64 # energy after optimization
@@ -106,8 +106,8 @@ mutable struct Gaussian_fPEPS
         @show Optim.minimum(res)
         println("Exact energy:", exact_energy_BCS_k(bz,t,μ,pairing_type,Δ_vec...))
 
-        @info "Building iPEPS from X..."
-        peps = translate(X, Nf, Nv)
+        # @info "Building iPEPS from X..."
+        # peps = translate(X, Nf, Nv)
 
         return new(
             Nf,
@@ -121,7 +121,7 @@ mutable struct Gaussian_fPEPS
             conf["params"]["maxiter"],
             conf["params"]["grad_tol"],
             Optim.minimizer(res),
-            peps,
+            # peps,
             exact_energy_BCS_k(bz,t,μ,pairing_type,Δ_vec...),
             Optim.minimum(res)
         )
