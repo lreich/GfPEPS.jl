@@ -61,11 +61,11 @@ N = (Nf + 4*Nv)
 
 # H ≈ H2
 
-H = GfPEPS.get_parent_hamiltonian(Γ_fiducial)
-_, M = GfPEPS.bogoliubov(H)
-U,V = GfPEPS.get_bogoliubov_blocks(M)
-Z = V * inv(U) # pairing matrix 
-Z = (Z - transpose(Z)) / 2  # ensure exact antisymmetry
+# H = GfPEPS.get_parent_hamiltonian(Γ_fiducial)
+# _, M = GfPEPS.bogoliubov(H)
+# U,V = GfPEPS.get_bogoliubov_blocks(M)
+# Z = V * inv(U) # pairing matrix 
+# Z = (Z - transpose(Z)) / 2  # ensure exact antisymmetry
 
 # # #=  =#
 # E, W0 = eigen(H; sortby = (x -> -real(x)))
@@ -138,7 +138,7 @@ Lx = 128
 Ly = 128
 
 ham = GfPEPS.hamiltonian(ComplexF64, InfiniteSquare(1, 1); t=t, Δx = Δ_x, Δy = Δ_y, mu = μ)
-energy1 = expectation_value(peps, ham, env)
+energy1 = real(expectation_value(peps, ham, env))
 # energy2 = BCS.energy_peps(G, bz, Np; Δx, Δy, t, mu)
 
 bz = BrillouinZone2D(Lx, Ly, (:APBC, :PBC))

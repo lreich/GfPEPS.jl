@@ -14,23 +14,21 @@
         "Ly": 5,
         "x_bc": "APBC",
         "y_bc": "PBC",
-        "lattice_type": "square"
+        "lattice_type": "square",
+        "parity": 1
     },
 
     "hamiltonian":{
         "t": 1.0,
-        "Δ_options":
-            {
-                "pairing_type": "s_wave",
-                "Δ_0": 2.0
-            },
-        "μ": 2.0 , 
+        "pairing_type": "s_wave",
+        "Δ_0": 1.0,
+        "μ": 1.0, 
         "hole_density": 0.0,
         "μ_from_hole_density": false
     },
 
     "file":{
-        "name": "data/BCS_test.jdl2"
+        "name": "data/BCS_test_s_wave.jdl2"
     },
 
     "backend": "cpu"

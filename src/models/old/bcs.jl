@@ -122,12 +122,8 @@ function energy_CM(
             Gf = A + B * inv(D + G_in) * transpose(B)
             # qq ordering of Majorana modes: (c_1, c_2, ..., c_(2(4Nv + Nf)))
             return real(
-                # ξ(k,t,mu) * (2 - Gf[1, 2] - Gf[3, 4]) / 2 -
-                #     Δ("default", k, Δx, Δy) * (Gf[4, 1] + Gf[3, 2] + 1.0im * (Gf[4, 2] - Gf[3, 1])) / 2
                 ξ(k,t,mu) * (2 - Gf[1, 2] - Gf[3, 4]) / 2 +
                     Δ("default", k, Δx, Δy) * (Gf[1, 4] + Gf[2, 3] + 1.0im * (Gf[2, 4] - Gf[1, 3])) / 2 
-                # ξ(k,t,mu) * (2 - Gf[1, 3] - Gf[2, 4]) / 2 +
-                #     Δ("default", k, Δx, Δy) * (Gf[1, 4] + Gf[3, 2] + 1.0im * (Gf[3, 4] - Gf[1, 2])) / 2 
             )
         end
     )
@@ -230,4 +226,51 @@ Apply Gutzwiller projection to Hubbard (spin-1/2) PEPS
 function gutzwiller_project(z::Float64, peps::InfinitePEPS)
     P = gutzwiller_projector(z)
     return InfinitePEPS(collect(P * t for t in peps.A))
+end
+
+"""
+    pwave_superconductor([T=ComplexF64,] lattice::InfiniteSquare; t=1, μ=2, Δ=1)
+
+Square lattice ``p``-wave superconductor model, defined by the Hamiltonian
+
+```math
+    H = -\\sum_{\\langle i,j \\rangle} \\left( t c_i^\\dagger c_j +
+    \\Delta c_i c_j + \\text{h.c.} \\right) - \\mu \\sum_i n_i,
+```
+
+where ``t`` is the hopping amplitude, ``\\Delta`` specifies the superconducting gap, ``\\mu``
+is the chemical potential, and ``n_i = c_i^\\dagger c_i`` is the fermionic number operator.
+"""
+function pwave_superconductor(lattice::InfiniteSquare; kwargs...)
+    return pwave_superconductor(ComplexF64, lattice; kwargs...)
+end
+function pwave_superconductor(
+        T::Type{<:Number}, lattice::InfiniteSquare;
+        t::Number = 1, μ::Number = 2, Δ::Number = 1
+    )
+    physical_space = Vect[FermionParity](0 => 1, 1 => 1)
+    spaces = fill(physical_space, (lattice.Nrows, lattice.Ncols))
+
+    # on-site
+    h0 = zeros(T, physical_space ← physical_space)
+    block(h0, FermionParity(1)) .= -μ
+
+    # two-site (x-direction)
+    hx = zeros(T, physical_space^2 ← physical_space^2)
+    block(hx, FermionParity(0)) .= [0 -Δ; -Δ 0]
+    block(hx, FermionParity(1)) .= [0 -t; -t 0]
+
+    # two-site (y-direction)
+    hy = zeros(T, physical_space^2 ← physical_space^2)
+    block(hy, FermionParity(0)) .= [0 Δ * im; -Δ * im 0]
+    block(hy, FermionParity(1)) .= [0 -t; -t 0]
+
+    x_neighbors = filter(n -> n[2].I[2] > n[1].I[2], nearest_neighbours(lattice))
+    y_neighbors = filter(n -> n[2].I[1] > n[1].I[1], nearest_neighbours(lattice))
+    return LocalOperator(
+        spaces,
+        ((idx,) => h0 for idx in vertices(lattice))...,
+        (neighbor => hx for neighbor in x_neighbors)...,
+        (neighbor => hy for neighbor in y_neighbors)...,
+    )
 end

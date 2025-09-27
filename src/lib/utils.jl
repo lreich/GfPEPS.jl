@@ -12,6 +12,8 @@ function ⊕(A::AbstractMatrix, n::Integer)
 end
 
 """
+    rand_orth(n::Int)
+
 Generate a random real orthogonal matrix via QR decomposition.
 """
 function rand_orth(n::Int)
@@ -26,16 +28,22 @@ function rand_orth(n::Int)
 end
 
 """
-Generate a random covariance matrix `Γ` of 
-a pure Gaussian state with even parity in Majorana representation.
+    rand_CM(Nf::Int, Nv::Int; parity::Int = 1)
+
+Generate a random covariance matrix `Γ` of a pure Gaussian state with given parity in Majorana representation.
+
+Returns `Γ`, `X` where `X` is the orthogonal matrix used to construct `Γ`.
 """
-function rand_CM(Nf::Int, Nv::Int)
+function rand_CM(Nf::Int, Nv::Int; parity::Int = 1)
     N = Nf + 4Nv
+    info = parity == 1 ? "even" : "odd"
+
     while true
         X = rand_orth(2N)
         Γ = Γ_fiducial(X, Nv, Nf)
 
-        if pfaffian(Γ) ≈ 1 # for pure BCS state with even parity Pf(iΓ) = +1
+        if pfaffian(Γ) ≈ parity # for pure BCS state, parity = Pf(Γ) = +1 (even) / -1 (odd)
+            @info "Created initial covariance matrix with $info parity"
             return Γ, X
         end
     end

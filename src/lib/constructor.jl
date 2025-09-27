@@ -71,7 +71,7 @@ mutable struct Gaussian_fPEPS
         end
 
         # build loss function
-        loss_init = get_loss_function_bcs(t, μ, bz_init, Nf, Nv, pairing_type, Δ_vec...)
+        loss_init = optimize_loss(t, μ, bz_init, Nf, Nv, pairing_type, Δ_vec...)
         loss = optimize_loss(t, μ, bz, Nf, Nv, pairing_type, Δ_vec...)
 
         # build gradients

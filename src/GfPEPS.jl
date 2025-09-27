@@ -3,6 +3,7 @@ module GfPEPS
 #= load external modules =#
 using MKL
 using LinearAlgebra
+using Statistics
 using BlockDiagonals
 # using ITensors, ITensorMPS
 using Optim
@@ -13,6 +14,7 @@ using Random
 using TensorOperations
 using SkewLinearAlgebra
 using MatrixFactorizations
+using Roots
 
 using SparseArrays: sparse, blockdiag, spdiagm
 using TensorKit
@@ -28,14 +30,15 @@ MKL.set_num_threads(Sys.CPU_THREADS)
 #= include local files =#
 include("lib/utils.jl")
 include("lib/brillouinZone.jl")
-include("lib/hamiltonian.jl")
 include("lib/GaussianMap.jl")
 include("lib/constructor.jl")
 include("lib/loss.jl")
 include("lib/states.jl")
 include("lib/translate.jl")
 include("lib/bogoliubov.jl")
-include("models/bcs.jl")
+include("lib/Xopt.jl")
+
+include("models/bcs_spin.jl")
 
 include("exports.jl") # export functions
 

@@ -1,26 +1,26 @@
 {
     "params":{
         "N_physical_fermions_on_site": 2,
-        "N_virtual_fermions_on_bond": 4,
+        "N_virtual_fermions_on_bond": 2,
         "seed": 1234,
         "maxiter": 500,
         "grad_tol": 1e-8,
         "f_reltol": 1e-10,
-        "show_trace": false
+        "show_trace": true
     },
 
     "system_params":{
-        "Lx": 5,
-        "Ly": 5,
+        "Lx": 11,
+        "Ly": 11,
         "x_bc": "APBC",
         "y_bc": "PBC",
         "lattice_type": "square",
-        "parity": 1
+        "parity": "even"
     },
 
     "hamiltonian":{
         "t": 1.0,
-        "pairing_type": "p_ip_wave",
+        "pairing_type": "d_wave",
         "Δ_0": 1.0,
         "μ": 1.0, 
         "hole_density": 0.0,
@@ -28,7 +28,7 @@
     },
 
     "file":{
-        "name": "data/BCS_test_p_ip_wave.jdl2"
+        "name": "data/BCS_test.jdl2"
     },
 
     "backend": "cpu"

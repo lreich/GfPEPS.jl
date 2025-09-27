@@ -124,7 +124,6 @@ function GaussianMap(A::AbstractMatrix, B::AbstractMatrix, D::AbstractMatrix, CM
     # mats = map(s -> B * ((D .- s) \ transpose(B)) .+ A, eachslice(CM_in; dims=1)) # Kraus thesis
     mats = map(s -> B * ((D .+ s) \ Bt) .+ A, eachslice(CM_in; dims=1)) # Hong hao paper
     # return cat(mats...; dims=3) |> x -> permutedims(x, (3,1,2))
-
     return permutedims(stack(mats, dims=3), (3,1,2))
 end
 
