@@ -10,6 +10,12 @@ export GaussianMap
 #= loss functions =#
 export optimize_loss
 
+export get_X_opt
+
+export Γ_fiducial
+
+export translate
+
 #= export constructors =#
 export Gaussian_fPEPS
 

@@ -36,7 +36,7 @@ function BCS_spin_hamiltonian(
         end...
     )
 end
-BCS_spin_hamiltonian(lattice; t, Δx, Δy, μ) = BCS_spin_hamiltonian(ComplexF64, lattice; t, Δx, Δy, μ)
+BCS_spin_hamiltonian(lattice; pairing_type="d_wave", Δ_0=1.0, μ=0.0) = BCS_spin_hamiltonian(ComplexF64, lattice; pairing_type=pairing_type, Δ_0=Δ_0, μ=μ)
 
 """
 Check if a 2-site bond is a nearest neighbor x-bond
@@ -195,12 +195,24 @@ function doping_bcs(Γ::AbstractMatrix, bz::BrillouinZone2D, Nf::Int)
 end
 
 """
+    doping_bcs(X::AbstractMatrix, bz::BrillouinZone2D, Nf::Int, Nv::Int)
+
+The average doping `δ = 1 - (1/N) ∑_i ⟨f†_{iσ} f_{iσ}⟩`
+evaluated from the matrix `X` from which the fiducial state correlation matrix `Γ` is built.
+"""
+function doping_bcs(X::AbstractMatrix, bz::BrillouinZone2D, Nf::Int, Nv::Int)
+    Γ = Γ_fiducial(X, Nv, Nf)
+    return doping_bcs(Γ, bz, Nf)
+end
+
+"""
     doping_peps(peps::InfinitePEPS, env::CTMRGEnv)
 
 The average doping `δ = 1 - (1/N) ∑_i ⟨f†_{iσ} f_{iσ}⟩`
 evaluated from the GfPEPS tensor.
 """
 function doping_peps(peps::InfinitePEPS, env::CTMRGEnv)
+    lattice = collect(space(t, 1) for t in peps.A)
     O = LocalOperator(lattice, ((1, 1),) => hub.e_num(Trivial, Trivial))
     return 1 - real(expectation_value(peps, O, env))
 end

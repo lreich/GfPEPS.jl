@@ -1,6 +1,7 @@
 function get_X_opt(Nf::Int, Nv::Int, t::Real, μ::Real, pairing_type::String, Δ_0::Real;
     δ::Float64 = 0.0,
     solve_μ_from_δ::Bool = false,
+    λ::Float64 = 1e2, # lagrange multiplier for hole density
     Lx::Int = 5, 
     Ly::Int = 5,
     bc::Tuple{Symbol, Symbol}=(:APBC, :PBC),
@@ -29,8 +30,18 @@ function get_X_opt(Nf::Int, Nv::Int, t::Real, μ::Real, pairing_type::String, Δ
     end
 
     # build loss function
-    loss_init = optimize_loss(t, μ, bz_init, Nf, Nv, pairing_type, Δ_0)
-    loss = optimize_loss(t, μ, bz, Nf, Nv, pairing_type, Δ_0)
+    loss_init_no_dens = optimize_loss(t, μ, bz_init, Nf, Nv, pairing_type, Δ_0)
+    loss_no_dens = optimize_loss(t, μ, bz, Nf, Nv, pairing_type, Δ_0)
+
+    # augmented loss that penalizes deviation from target hole density δ
+    loss_init_dens(X) = begin
+        return loss_init_no_dens(X) + λ * (doping_bcs(X, bz_init, Nf, Nv) - δ)^2
+    end
+    loss_dens(X) = begin
+        return loss_no_dens(X) + λ * (doping_bcs(X, bz, Nf, Nv) - δ)^2
+    end
+    loss_init = solve_μ_from_δ ? loss_init_dens : loss_init_no_dens
+    loss = solve_μ_from_δ ? loss_dens : loss_no_dens
 
     # build gradients
     g_init(x) = first(Zygote.gradient(loss_init, x))
@@ -74,6 +85,7 @@ get_X_opt(;conf::Dict=parsefile(joinpath(GfPEPS.config_path, "conf_BCS_d_wave.js
     conf["hamiltonian"]["Δ_0"];
     δ = conf["hamiltonian"]["hole_density"],
     solve_μ_from_δ = conf["hamiltonian"]["μ_from_hole_density"],
+    λ = conf["hamiltonian"]["lagrange_multiplier_density"],
     Lx = conf["system_params"]["Lx"],
     Ly = conf["system_params"]["Ly"],
     bc = (Symbol(conf["system_params"]["x_bc"]), Symbol(conf["system_params"]["y_bc"])),

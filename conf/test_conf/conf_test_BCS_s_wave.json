@@ -24,7 +24,8 @@
         "Δ_0": 1.0,
         "μ": 1.0, 
         "hole_density": 0.0,
-        "μ_from_hole_density": false
+        "μ_from_hole_density": false,
+        "lagrange_multiplier_density": 1e2
     },
 
     "file":{
