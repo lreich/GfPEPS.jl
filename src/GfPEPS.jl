@@ -26,7 +26,7 @@ import TensorKitTensors.TJOperators as tJ
 const V = FO.fermion_space()
 const unit = TensorKit.id(V)
 
-MKL.set_num_threads(Sys.CPU_THREADS) 
+# MKL.set_num_threads(Sys.CPU_THREADS) 
 
 #= include local files =#
 include("lib/utils.jl")
