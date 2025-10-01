@@ -6,16 +6,16 @@
         "maxiter": 500,
         "grad_tol": 1e-8,
         "f_reltol": 1e-10,
-        "show_trace": true
+        "show_trace": false
     },
 
     "system_params":{
-        "Lx": 11,
-        "Ly": 11,
+        "Lx": 5,
+        "Ly": 5,
         "x_bc": "APBC",
         "y_bc": "PBC",
         "lattice_type": "square",
-        "parity": "even"
+        "parity": 1
     },
 
     "hamiltonian":{
@@ -23,13 +23,13 @@
         "pairing_type": "d_wave",
         "Δ_0": 1.0,
         "μ": 1.0, 
-        "hole_density": 0.0,
-        "μ_from_hole_density": false,
+        "hole_density": 0.13,
+        "μ_from_hole_density": true,
         "lagrange_multiplier_density": 1e2
     },
 
     "file":{
-        "name": "data/BCS_test.jdl2"
+        "name": "data/BCS_test_d_wave.jdl2"
     },
 
     "backend": "cpu"

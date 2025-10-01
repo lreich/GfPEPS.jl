@@ -70,6 +70,7 @@ function translate(X::AbstractMatrix, Nf::Int, Nv::Int)
 
     U,V = get_bogoliubov_blocks(M)
     Z = V * inv(U) # pairing matrix 
+    # Z = conj(V * inv(U)) # pairing matrix 
     @assert Z ≈ -transpose(Z) "Pairing matrix must be antisymmetric"
     Z = (Z - transpose(Z)) / 2  # ensure exact antisymmetry
 
