@@ -76,7 +76,8 @@ function translate(X::AbstractMatrix, Nf::Int, Nv::Int)
     ω = virtual_bond_state(Nv)
     F = fiducial_state(Nf, Nv, Z)
     peps = get_peps(ω, F)
-    return peps
+
+    return PEPSKit.peps_normalize(peps)
 end
 
 """
