@@ -40,8 +40,8 @@ function get_X_opt(Nf::Int, Nv::Int, t::Real, μ::Real, pairing_type::String, Δ
     loss_dens(X) = begin
         return loss_no_dens(X) + λ * (doping_bcs(X, bz, Nf, Nv) - δ)^2
     end
-    loss_init = solve_μ_from_δ ? loss_init_dens : loss_init_no_dens
-    loss = solve_μ_from_δ ? loss_dens : loss_no_dens
+    loss_init = δ!=0 ? loss_init_dens : loss_init_no_dens
+    loss = δ!=0 ? loss_dens : loss_no_dens
 
     # build gradients
     g_init(x) = first(Zygote.gradient(loss_init, x))

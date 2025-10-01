@@ -116,7 +116,7 @@ the fiducial state correlation matrix `G`.
 """
 function energy_CM(
         Γ_fiducial::AbstractMatrix, bz::BrillouinZone2D, Nf::Int;
-        t::Float64 = 1.0, pairing_type::String = "d_wave", Δ_0::Float64 = 0.5, mu::Float64 = 0.0
+        t::Float64 = 1.0, pairing_type::String = "d_wave", Δ_0::Float64 = 0.5, μ::Float64 = 0.0
     )
     A = Γ_fiducial[1:2*Nf, 1:2*Nf]
     B = Γ_fiducial[1:2*Nf, 2*Nf+1:end]
@@ -129,7 +129,7 @@ function energy_CM(
             Gf = A + B * inv(D + G_in) * transpose(B)
             # qq ordering of Majorana modes: (c_1, c_2, ..., c_(2(4Nv + Nf)))
             return real(
-                ξ(k,t,mu) * (2 - Gf[1, 2] - Gf[3, 4]) / 2 +
+                ξ(k,t,μ) * (2 - Gf[1, 2] - Gf[3, 4]) / 2 +
                     Δ(pairing_type, k, Δ_0) * (Gf[1, 4] + Gf[2, 3] + 1.0im * (Gf[2, 4] - Gf[1, 3])) / 2 
             )
         end

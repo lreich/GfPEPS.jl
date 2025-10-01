@@ -123,8 +123,8 @@ Espace = Vect[FermionParity](0 => 4, 1 => 4)
 env = CTMRGEnv(randn, ComplexF64, peps, Espace)
 # env = CTMRGEnv(randn, ComplexF64, peps)
 for χenv in [8, 16]
-    trscheme = truncdim(χenv) & truncerr(1.0e-12)
-    env, = leading_boundary(
+    trscheme = truncdim(χenv)
+    env, info = leading_boundary(
         env, peps; tol = 1.0e-11, maxiter = 200, trscheme,
         alg = :sequential, projector_alg = :fullinfinite
     )
@@ -132,12 +132,11 @@ end
 
 t = 1.0
 μ = 1.0
-Δ_x = 1.0
-Δ_y = 1.0
+Δ_0 = 1.0
 Lx = 128
 Ly = 128
 
-ham = GfPEPS.hamiltonian(ComplexF64, InfiniteSquare(1, 1); t=t, Δx = Δ_x, Δy = Δ_y, mu = μ)
+ham = GfPEPS.BCS_spin_hamiltonian(ComplexF64, InfiniteSquare(1, 1); pairing_type="d_wave", t=t, Δ_0 = Δ_0, μ = μ)
 energy1 = real(expectation_value(peps, ham, env))
 # energy2 = BCS.energy_peps(G, bz, Np; Δx, Δy, t, mu)
 
@@ -147,7 +146,7 @@ bz = BrillouinZone2D(Lx, Ly, (:APBC, :PBC))
 # G_out = GaussianMap(Γ_fiducial, G_in, Nf, Nv)
 # energy2 = GfPEPS.energy_loss(t, μ, bz, res.Δ_options["pairing_type"], Δ_x, Δ_y)(G_out)
 
-energy2 = GfPEPS.energy_CM(Γ_fiducial, bz, Nf; t=t, mu=μ, Δx=Δ_x, Δy=Δ_y)
+energy2 = GfPEPS.energy_CM(Γ_fiducial, bz, Nf; pairing_type="d_wave", t=t, μ=μ, Δ_0=Δ_0)
 
 @info "Energy per site (PEPS)" energy1
 @info "Energy per site (CM)" energy2
