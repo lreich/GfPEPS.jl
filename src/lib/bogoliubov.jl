@@ -48,13 +48,11 @@ function skew_canonical_form(P::AbstractMatrix)
     W = P'P
     @assert ishermitian(W)
 
-    # n = size(W,1)
-    # p = div(rank(W),2)
     E, Φ = eigen(Hermitian(W); sortby = (x -> -real(x)))
     alphas = sqrt.(abs.(E))
 
-    Φ_prime = similar(Φ)
     # build orthogonal eigenvectors
+    Φ_prime = similar(Φ)
     for j in eachindex(alphas)
         Φ_prime[:, j] = (P'*conj.(Φ[:, j])) / alphas[j]
     end
@@ -75,46 +73,93 @@ function skew_canonical_form(P::AbstractMatrix)
         end
     end
 
-    @show dot(S[:,1], S[:,2])
-
     X = S'*P*conj(S)
 
-    display(X)
+    # permutation to have positive elements in the upper-right of each 2x2 block
+    perm_mat = canonical_skew_permutation(X)
+    X = perm_mat' * X * perm_mat
+    S = S * perm_mat
 
-    sd
+    # absorb phases into S to have X is real
+    S, X = absorb_phases(S, X)
 
-    # # For each twofold eigenspace:
-    # #  - pick one eigenvector v,
-    # #  - form partner w = P' * conj(v) / α and project it into the eigenspace,
-    # #  - orthonormalize the two vectors inside the eigenspace (thin QR),
-    # #  - enforce the sign convention so block = [0 +α; -α 0].
-    # for μ in 1:p
-    #     Φb = Φ[:, 2μ-1:2μ]                    # basis of the 2D eigenspace
-    #     v = Φb[:, 1]                          # pick representative
-    #     w = (P' * conj(v)) / alphas[2μ-1]     # partner (α>0)
-    #     w_proj = Φb * (Φb' * w)               # project partner into same eigenspace
-
-    #     # orthonormalize inside the eigenspace
-    #     Q = qr(hcat(v, w_proj))
-    #     S[:, 2μ-1:2μ] = Matrix(Q.Q)[:, 1:2]
-
-    #     # ensure the off-diagonal (1,2) is positive: flip second column if needed
-    #     blk = real(transpose(S[:, 2μ-1:2μ]) * P * S[:, 2μ-1:2μ])
-    #     if blk[1,2] < 0
-    #         S[:, 2μ] .*= -1
-    #     end
-    # end
-    # # append any remaining zero-modes
-    # if 2p < n
-    #     S[:, 2p+1:n] = Φ[:, 2p+1:n]
-    # end
-    # @assert S' * S ≈ I
-
-    # X = real.(transpose(S) * P * S)
-    # X[abs.(X) .< 1e-12] .= 0.0 # remove near zero entries for better readability
-
-    return S, X
+    X[abs.(X) .< 1e-12] .= 0.0
+    return S,X
 end
+
+function absorb_phases(S::AbstractMatrix, X::AbstractMatrix)
+    S2 = copy(S)
+    X2 = copy(X)
+
+    n = size(X2,1)
+    i = 1
+    while i <= n-1
+        x = X2[i, i+1]
+        y = X2[i+1, i]
+        # If already real with nonnegative value, skip
+        if !(abs(imag(x)) ≈ 0 && real(x) >= 0)
+            φ = angle(x)
+            d = exp(1im * φ/2)          # uniform phase for the pair
+            @views S2[:, i  ] .*= d
+            @views S2[:, i+1] .*= d
+            # Block transforms by conj(d)^2
+            # After this, value becomes real ≈ |x|
+            X2[i, i+1] = abs(x)
+            X2[i+1, i] = -abs(x)
+        end
+        i += 2
+    end
+    @assert isapprox(imag(X2), zeros(ComplexF64, n,n), atol=1e-12) "X2 should be real after phase absorption"
+
+    return S2, real(X2)
+end
+
+# function skew_canonical_form(P::AbstractMatrix)
+#     # Check skew-symmetry
+#     @assert transpose(P) ≈ -P
+
+#     W = P'P
+#     @assert ishermitian(W)
+
+#     n = size(W,1)
+#     p = div(rank(W),2)
+#     E, Φ = eigen(Hermitian(W); sortby = (x -> -real(x)))
+#     alphas = sqrt.(abs.(E))
+
+#     S = similar(P)
+
+#     # For each twofold eigenspace:
+#     #  - pick one eigenvector v,
+#     #  - form partner w = P' * conj(v) / α and project it into the eigenspace,
+#     #  - orthonormalize the two vectors inside the eigenspace (thin QR),
+#     #  - enforce the sign convention so block = [0 +α; -α 0].
+#     for μ in 1:p
+#         Φb = Φ[:, 2μ-1:2μ]                    # basis of the 2D eigenspace
+#         v = Φb[:, 1]                          # pick representative
+#         w = (P' * conj(v)) / alphas[2μ-1]     # partner (α>0)
+#         w_proj = Φb * (Φb' * w)               # project partner into same eigenspace
+
+#         # orthonormalize inside the eigenspace
+#         Q = qr(hcat(v, w_proj))
+#         S[:, 2μ-1:2μ] = Matrix(Q.Q)[:, 1:2]
+
+#         # ensure the off-diagonal (1,2) is positive: flip second column if needed
+#         blk = real(transpose(S[:, 2μ-1:2μ]) * P * S[:, 2μ-1:2μ])
+#         if blk[1,2] < 0
+#             S[:, 2μ] .*= -1
+#         end
+#     end
+#     # append any remaining zero-modes
+#     if 2p < n
+#         S[:, 2p+1:n] = Φ[:, 2p+1:n]
+#     end
+#     @assert S' * S ≈ I
+
+#     X = real.(transpose(S) * P * S)
+#     X[abs.(X) .< 1e-12] .= 0.0 # remove near zero entries for better readability
+
+#     return S, X
+# end
 
 
 # Build a permutation matrix S_perm so that (S_perm' * P_bar1 * S_perm)
@@ -157,43 +202,14 @@ function bloch_messiah_decomposition(M::AbstractMatrix)
     P_bar = B'*P*conj.(B)
     @assert P_bar ≈ - transpose(P_bar)
 
-    _, S = eigen(P_bar)
-    display(S'*P_bar*conj(S))
-    sd
-
     # Bring P_bar to canonical form
     S, _ = skew_canonical_form(P_bar)
     P_canonical = S' * P_bar * conj.(S)
 
-    display(P_canonical)
-
-    sdssd
-
-    S = canonical_skew_permutation(P_bar1)
-    P_bar = S' * P_bar1 * conj.(S)
-    P_bar[abs.(P_bar) .< 1e-12] .= 0.0 # remove near zero entries
-
-    A = permute_zero_cols_to_end(P_bar)
-    
-    # S, P_bar = skew_canonical_form(P_bar1)
-    # D = B*conj.(S)
+    A = permute_zero_cols_to_end(P_canonical)
     D = B * S * A
 
-    display(P_bar1)
-    display(D'Q*D)
-    display(D'P*conj.(D))
-
     @assert D'*P*conj(D) ≈ D'*conj(V)*transpose(U)*conj(D)
-
-    # # Enforce sign convention: (k,k+1) element of D' * P * conj(D) positive
-    # P_can = D' * P * conj(D)
-    # for k in 1:2:N-1
-    #     if real(P_can[k, k+1]) < 0
-    #         D[:, k+1] .*= -1                # flip second vector in the pair
-    #         P_can[k, k+1] = -P_can[k, k+1]  # update cached block (optional)
-    #         P_can[k+1, k] = -P_can[k+1, k]
-    #     end
-    # end
 
     F = MatrixFactorizations.rq(D' * U)
     R = Matrix(F.R)
@@ -218,11 +234,14 @@ function bloch_messiah_decomposition(M::AbstractMatrix)
     @assert C'C ≈ I
     @assert Q'Q ≈ I
 
-    display(D'*conj(V)*transpose(Q))
-
-
     @assert U ≈ D*Ubar*C
     @assert V ≈ conj.(D)*Vbar*C
+
+    # remove numerical noise
+    Ubar = real(Ubar)
+    Ubar[abs.(Ubar) .< 1e-12] .= 0.0
+    Vbar = real(Vbar)
+    Vbar[abs.(Vbar) .< 1e-12] .= 0.0
 
     Dmat = [D zeros(N,N); zeros(N,N) conj.(D)]
     UV_mat = [Ubar Vbar; Vbar Ubar]
@@ -288,14 +307,3 @@ function canonical_form2(P::AbstractMatrix)
 
     return S, P̄, s
 end
-
-n = 6
-A = randn(ComplexF64, n, n)
-P = (A - transpose(A))/2
-S, X = canonical_form2(P)
-
-X
-
-@assert norm(S' * S - I) < 1e-10
-@assert norm(S' * P * conj(S) - X) < 1e-10
-
