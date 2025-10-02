@@ -75,7 +75,7 @@ Where A ∈ ℝ^(2Nf x 2Nf), B ∈ ℝ^(2Nf x 8Nv), D ∈ ℝ^(8Nv x 8Nv).
 A and D are antisymmetric.
 
 The modes of the A block are qq-ordered as: (c_1, c_2, ..., c_(2Nf))
-The modes of the D block have the same ordering (lrud) as G_in_single_k, i.e., (c_l1^1, c_l1^2, c_r1^1, c_r1^2, ..., c_lNv^1, c_lNv^2, c_rNv^1, c_rNv^2, c_u1^1, c_u1^2, c_d1^1, c_d1^2, ..., c_uNv^1, c_uNv^2, c_dNv^1, c_dNv^2) 
+The modes of the D block have the same ordering (lrdu) as G_in_single_k, i.e., (c_l1^1, c_l1^2, c_r1^1, c_r1^2, ..., c_lNv^1, c_lNv^2, c_rNv^1, c_rNv^2, c_u1^1, c_u1^2, c_d1^1, c_d1^2, ..., c_uNv^1, c_uNv^2, c_dNv^1, c_dNv^2) 
 The modes of the B block are ordered as above.
 
 Note:
@@ -126,31 +126,6 @@ function GaussianMap(A::AbstractMatrix, B::AbstractMatrix, D::AbstractMatrix, CM
     # return cat(mats...; dims=3) |> x -> permutedims(x, (3,1,2))
     return permutedims(stack(mats, dims=3), (3,1,2))
 end
-
-# function GaussianMap(A::AbstractMatrix, B::AbstractMatrix, D::AbstractMatrix, CM_in::AbstractArray)
-#     # get block matrices from CM_out (=Γ_fiducial)
-#     # A = CM_out[1:2*Nf, 1:2*Nf]
-#     # B = CM_out[1:2*Nf, 2*Nf+1:end]
-#     # D = CM_out[2*Nf+1:end, 2*Nf+1:end]
-#     Bt = transpose(B)
-
-#     # Gaussian map for each (kx,ky)
-#     # mats = map(s -> B * ((D .- s) \ transpose(B)) .+ A, eachslice(CM_in; dims=1)) # Kraus thesis
-#     return map(s -> B * ((D .+ s) \ Bt) .+ A, eachslice(CM_in; dims=1)) # Hong hao paper
-# end
-
-# function GaussianMap(A::AbstractMatrix, B::AbstractMatrix, D::AbstractMatrix, CM_in::AbstractArray)
-#     Nkvals = size(CM_in, 1)
-#     N = size(A, 1)
-#     Bt = transpose(B)
-#     outbuf = Zygote.Buffer(Array{eltype(CM_in)}(undef, Nkvals, N, N), Nkvals, N, N)
-#     @inbounds @views for k = 1:Nkvals
-#         # (D + s) \ Bt  ⇒ solve once, then multiply on left by B
-#         outbuf[k, :, :] = B * ((D .+ CM_in[k, :, :]) \ Bt) .+ A
-#     end
-#     return copy(outbuf) # copy(Buffer()) returns a normal array
-# end
-
 
 function GaussianMap_single_k(A::AbstractMatrix, B::AbstractMatrix, D::AbstractMatrix, CM_in::AbstractMatrix)
     return B * ((D + CM_in) \ transpose(B)) .+ A

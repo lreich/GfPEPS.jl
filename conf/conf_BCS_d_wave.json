@@ -12,8 +12,8 @@
     "system_params":{
         "Lx": 5,
         "Ly": 5,
-        "x_bc": "APBC",
-        "y_bc": "PBC",
+        "x_bc": "PBC",
+        "y_bc": "APBC",
         "lattice_type": "square",
         "parity": 1
     },

@@ -65,7 +65,7 @@ function translate(X::AbstractMatrix, Nf::Int, Nv::Int)
     @assert Γ * Γ ≈ -I "Covariance matrix must satisfy Γ² = -I for a pure Gaussian state"
     @assert pfaffian(Γ) ≈ 1  "Pure BCS states must have even parity Pf(iΓ) = +1"
 
-    H = get_parent_hamiltonian(Γ)
+    H = get_parent_hamiltonian(Γ, Nf, Nv)
     _, M = bogoliubov(H)
 
     U,V = get_bogoliubov_blocks(M)
@@ -140,20 +140,142 @@ end
 
 Return the parent Hamiltonian in Dirac representation (qp-ordering) of the fiducial state correlation matrix `Γ` in Majorana representation (qq-ordering).
 """
-function get_parent_hamiltonian(Γ::AbstractMatrix)
+function get_parent_hamiltonian(Γ::AbstractMatrix, Nf::Int, Nv::Int)
     N = div(size(Γ, 1), 2)
 
     # Transform to Dirac fermions (qq-ordering)
     Ω0 = [1  1; im  -im]
     Ω = kron(I(N), Ω0)
     Γ_fiducial_dirac = 1/4 .* Ω' * Γ * Ω
+    #= Now has the following ordering (qq)
+        (f_1,f_1†, ..., f_Nf, f_Nf†, l_1, l_1†, r_1, r_1†, ..., l_Nv, l_Nv†, r_Nv, r_Nv†, d_1, d_1†, u_1, u_1†, ..., d_Nv, d_Nv†, u_Nv, u_Nv†)
+    =#
 
     # bring to qp-ordering
     perm = vcat(1:2:(2N), 2:2:(2N))
     Γ_fiducial_dirac = Γ_fiducial_dirac[perm, perm]
+    #= Now has the following ordering (qp)
+        (f_1, ..., f_Nf, l_1, r_1, ..., l_Nv, r_Nv, d_1, u_1, ..., d_Nv, u_Nv, f_1†, ..., f_Nf†, l_1†, r_1†, ..., l_Nv†, r_Nv†, d_1†, u_1†, ..., d_Nv†, u_Nv†)
+    =#
+
+    # group virtual fermions as (l1,...,lNv,r1,...,rNv,d1,...,dNv,u1,...,uNv)
+    L = collect(1:2:2Nv)    # l1, l2, ...
+    R = collect(2:2:2Nv)    # r1, r2, ...
+    D = collect(2Nv+1:2:4Nv)  # d1, d2, ...
+    U = collect(2Nv+2:2:4Nv)  # u1, u2, ...
+    perm_virtual = vcat(L, R, D, U)
+    
+    perm_total = vcat(
+        1:Nf,                       # physical (already fine)
+        Nf .+ perm_virtual,         # reorder virtuals
+        (Nf+4Nv) .+ (1:Nf),         # f†
+        (2Nf+4Nv) .+ perm_virtual    # reordered virtual†
+    )
+    Γ_fiducial_dirac = Γ_fiducial_dirac[perm_total, perm_total]
 
     @assert Γ_fiducial_dirac' ≈ -Γ_fiducial_dirac "Fiducial state CM in Dirac representation must be anti-hermitian"
     @assert Γ_fiducial_dirac*Γ_fiducial_dirac' ≈ I / 4 "Fiducial state CM in Dirac representation must be pure"
 
     return Hermitian(-2im .* Γ_fiducial_dirac)
+end
+
+function get_empty_peps_tensor(Nf::Int, Nv::Int)
+    physical_spaces = Vect[fℤ₂](0 => Nf, 1 => Nf)
+    V_bonds = Vect[fℤ₂](0 => Nv, 1 => Nv)
+    virtual_spaces = V_bonds ⊗ V_bonds ⊗ V_bonds' ⊗ V_bonds'
+
+    T = zeros(ComplexF64, dim(physical_spaces), dim(virtual_spaces))
+    T = reshape(T, (2^Nf, 2^Nv, 2^Nv, 2^Nv, 2^Nv))
+
+    return T, physical_spaces, virtual_spaces
+end
+
+function translate_new(X::AbstractMatrix, Nf::Int, Nv::Int)
+    Γ_fiducial = Γ_fiducial(X, Nv, Nf)
+
+    H = get_parent_hamiltonian(Γ_fiducial, Nf, Nv)
+    _, M = bogoliubov(H)
+
+    # Bloch Messiah decomposition
+    Dmat,UVmat,Cmat = bloch_messiah_decomposition(M)
+    Dmat_prime,UVmat_prime,Cmat_prime = truncated_bloch_messiah(Dmat, UVmat, Cmat)
+    D, Ubar, Vbar, C = get_mats_from_bloch_messiah(Dmat_prime, UVmat_prime, Cmat_prime)
+
+    M_A = size(Vbar, 1)
+    parity = mod(M_A,2)
+    v_prod = prod([abs(Vbar[i-1, i]) for i in 2:2:N])
+
+    # compute full matrices for overlap
+    R_mat_full = D*Vbar
+    Q_mat = Ubar*Vbar
+    @assert Q_mat ≈ - transpose(Q_mat)
+    Q_mat = (Q_mat - transpose(Q_mat)) / 2 # enforce exact skew-symmetry
+
+    states_f = 0:(2^Nf - 1)
+    states_v = 0:(2^Nv - 1)
+
+    # Cartesian product; store as tuples
+    states = [(f,l,r,d,u) for f in states_f for l in states_v for r in states_v
+                                    for d in states_v for u in states_v]
+
+    ind_f_dict = translate_occ_to_TM_dict(Nf)
+    ind_v_dict = translate_occ_to_TM_dict(Nv)
+
+    T, physical_spaces, virtual_spaces = get_empty_peps_tensor(Nf, Nv)
+
+    # get tensor elements with overlap formula from 10.1103/PhysRevB.107.125128
+    for state in states
+        f_occ, l_occ, r_occ, d_occ, u_occ = state
+
+        # convert occ to bitstrings
+        f = digits(f_occ, base=2, pad=Nf)
+        u = digits(u_occ, base=2, pad=Nv)
+        l = digits(l_occ, base=2, pad=Nv)
+        d = digits(d_occ, base=2, pad=Nv)
+        r = digits(r_occ, base=2, pad=Nv)
+
+        # Boolean occupation vector to select rows from R_mat_full (true if occupied)
+        occ_bool = map(==(1), vcat(f,l,r,d,u))
+        M_prime = count(==(1), occ_bool)
+
+        parity_f = mod(count(==(1), f), 2)
+        parity_v = mod(count(==(1), vcat(u,l,d,r)), 2)
+
+        if mod(M_prime,2) != parity || parity_f != parity_v # skip if parity doesn't match
+            continue
+        end
+
+        if M_prime!=0  
+            # build R_mat
+            R_mat = R_mat_full[occ_bool,:]
+            fsign = (-1)^(1/2 * M_prime*(M_prime-1)) # fermionic sign from reordering
+            pf = pfaffian([zeros(M_prime,M_prime) R_mat; -transpose(R_mat) Q_mat])
+
+            T[ind_f_dict[f], ind_v_dict[l], ind_v_dict[d], ind_v_dict[r], ind_v_dict[u]] = fsign * pf / v_prod
+        else # all unoccupied
+            T[ind_f_dict[f], ind_v_dict[u], ind_v_dict[d], ind_v_dict[r], ind_v_dict[l]] = pfaffian(Q_mat) / v_prod
+        end
+    end
+
+    peps = InfinitePEPS(TensorMap(T, physical_spaces ← virtual_spaces))
+    return peps
+end
+
+function translate_occ_to_TM_dict(N)
+    nstates = 2^N
+    even = []
+    odd  = []
+    for x in 0: nstates-1
+        d = reverse(digits(x, base=2, pad=N))
+        if isodd(sum(d))
+            push!(odd, d)
+        else
+            push!(even, d)
+        end
+    end
+    mapping = Dict{Vector{Int}, Int}()
+    for (i,x) in enumerate((even..., odd...))
+        mapping[x] = i
+    end
+    return mapping
 end

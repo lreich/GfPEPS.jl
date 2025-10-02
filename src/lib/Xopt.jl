@@ -16,11 +16,10 @@ function get_X_opt(Nf::Int, Nv::Int, t::Real, μ::Real, pairing_type::String, Δ
 
     # construct Brillouin zone
     bz = BrillouinZone2D(Lx,Ly,bc)
-    has_dirac_points(bz,t,μ,pairing_type,Δ_0) # warn if dirac points are present
+    
     Lx_init = isodd(Lx) ? 5 : 6
     Ly_init = isodd(Ly) ? 5 : 6
     bz_init = BrillouinZone2D(Lx_init,Ly_init,bc)
-    has_dirac_points(bz_init,t,μ,pairing_type,Δ_0) # warn if dirac points are present
 
     # initial ortogonal matrix X to construct Γ_out with correct parity sector (even)
     _, X = rand_CM(Nf,Nv; parity=parity)
@@ -28,6 +27,9 @@ function get_X_opt(Nf::Int, Nv::Int, t::Real, μ::Real, pairing_type::String, Δ
     if(solve_μ_from_δ)
         μ = solve_for_mu(bz,δ,t,pairing_type,Δ_0)
     end
+
+    has_dirac_points(bz,t,μ,pairing_type,Δ_0) # warn if dirac points are present
+    has_dirac_points(bz_init,t,μ,pairing_type,Δ_0) # warn if dirac points are present
 
     # build loss function
     loss_init_no_dens = optimize_loss(t, μ, bz_init, Nf, Nv, pairing_type, Δ_0)

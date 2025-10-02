@@ -269,41 +269,34 @@ function permute_zero_cols_to_end(P::AbstractMatrix)
     return A[:, perm]
 end
 
-function canonical_form2(P::AbstractMatrix)
-    @assert P ≈ -transpose(P) "P must be skew-symmetric"
+function get_mats_from_bloch_messiah(Dmat, UVmat, Cmat)
+    N = div(size(Dmat, 1), 2)
 
-    # Step 1: Eigen decomposition of P†P
-    F = P' * P
-    λ, V = eigen(F)  # λ real and ≥ 0
+    Ubar = UVmat[1:N, 1:N]
+    Vbar = UVmat[N+1:end, 1:N]
+    C = Cmat[1:N, 1:N]
+    D = Dmat[1:N, 1:N]
 
-    n = size(P, 1)
-    cols = Vector{Vector{ComplexF64}}()
-    s = Float64[]
+    return D,Ubar,Vbar,C
+end
 
-    for j in 1:n
-        λj = λ[j]
-        vj = V[:, j]
+function truncated_bloch_messiah(Dmat,UVmat,Cmat)
+    D,Ubar,Vbar,C = get_mats_from_bloch_messiah(Dmat, UVmat, Cmat)
 
-        if λj > 1e-12  # nonzero eigenvalue
-            # Step 2: Construct wj
-            wj = (P' * conj(vj)) / sqrt(abs(λj))
-
-            # Step 3: Add vj, wj as a pair
-            push!(cols, vj)
-            push!(cols, wj)
-
-            push!(s, sqrt(abs(λj)))
-        else
-            # Step 4: Zero eigenvalue eigenvector
-            push!(cols, vj)
-        end
+    # discard zero columns
+    zero_ind = findfirst(col -> all(iszero, col), eachcol(Vbar))
+    if zero_ind === nothing
+        return Dmat, UVmat, Cmat
     end
+    
+    D_prime = D[:, 1:zero_ind-1]
+    Vbar_prime = Vbar[:, 1:zero_ind-1]
+    Ubar_prime = Ubar[:, 1:zero_ind-1]
+    C_prime = C[1:zero_ind-1, :]
 
-    # Step 5: Build S from columns
-    S = hcat(cols...)
+    Dmat_prime = [D_prime zeros(size(D_prime)); zeros(size(D_prime)) conj.(D_prime)]
+    UVmat_prime = [Ubar_prime Vbar_prime; Vbar_prime Ubar_prime]
+    Cmat_prime = [C_prime zeros(size(C_prime)); zeros(size(C_prime)) conj.(C_prime)]
 
-    # Canonical form
-    P̄ = S' * P * conj(S)
-
-    return S, P̄, s
+    return Dmat_prime, UVmat_prime, Cmat_prime
 end
