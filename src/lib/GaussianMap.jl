@@ -17,7 +17,7 @@ function helper(k::Real)
     #         -conj(cis(k))*σ_x zeros(2,2)] # (rldu) Hong hao paper convention (qq-ordering, l_1,r_1...l_Nv,r_Nv,u_1,d_1...u_Nv,d_Nv)
 
     return [zeros(2,2) -conj(cis(k))*σ_x;
-            cis(k)*σ_x zeros(2,2)] # Hackenbroich 2010 (lrud)
+            cis(k)*σ_x zeros(2,2)] # Hackenbroich 2010 (lrud) (lrdu)
 end
 
 """
@@ -75,7 +75,7 @@ Where A ∈ ℝ^(2Nf x 2Nf), B ∈ ℝ^(2Nf x 8Nv), D ∈ ℝ^(8Nv x 8Nv).
 A and D are antisymmetric.
 
 The modes of the A block are qq-ordered as: (c_1, c_2, ..., c_(2Nf))
-The modes of the D block have the same ordering (lrdu) as G_in_single_k, i.e., (c_l1^1, c_l1^2, c_r1^1, c_r1^2, ..., c_lNv^1, c_lNv^2, c_rNv^1, c_rNv^2, c_u1^1, c_u1^2, c_d1^1, c_d1^2, ..., c_uNv^1, c_uNv^2, c_dNv^1, c_dNv^2) 
+The modes of the D block have the same ordering (lrud) as G_in_single_k, i.e., (c_l1^1, c_l1^2, c_r1^1, c_r1^2, ..., c_lNv^1, c_lNv^2, c_rNv^1, c_rNv^2, c_u1^1, c_u1^2, c_d1^1, c_d1^2, ..., c_uNv^1, c_uNv^2, c_dNv^1, c_dNv^2) 
 The modes of the B block are ordered as above.
 
 Note:

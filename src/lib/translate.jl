@@ -266,7 +266,7 @@ function translate_occ_to_TM_dict(N)
     even = []
     odd  = []
     for x in 0: nstates-1
-        d = reverse(digits(x, base=2, pad=N))
+        d = (digits(x, base=2, pad=N))
         if isodd(sum(d))
             push!(odd, d)
         else

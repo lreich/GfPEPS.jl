@@ -29,18 +29,19 @@ Dmat_prime,UVmat_prime,Cmat_prime = GfPEPS.truncated_bloch_messiah(Dmat, UVmat, 
 D, Ubar, Vbar, C = GfPEPS.get_mats_from_bloch_messiah(Dmat_prime, UVmat_prime, Cmat_prime)
 M_A = size(Vbar, 1)
 
-v_prod = prod([abs(Vbar[i-1, i]) for i in 2:2:N])
+v_prod = prod([abs(Vbar[i-1, i]) for i in 2:2:M_A])
 
 R_mat_full = D*Vbar
 Q_mat = Ubar*Vbar
 @assert Q_mat ≈ - transpose(Q_mat)
 Q_mat = (Q_mat - transpose(Q_mat)) / 2 # enforce exact skew-symmetry
 
-pfaffian(Q_mat) / v_prod
-
 T, physical_spaces, virtual_spaces = GfPEPS.get_empty_peps_tensor(Nf, Nv)
 
-#= overlap calc =#
+#= overlap calc 
+
+<f,l,r,d,u|A_i>
+=#
 
 parity = mod(M_A,2)
 
@@ -54,28 +55,24 @@ states = [(f,l,r,d,u) for f in states_f for l in states_v for r in states_v
 # states = [(r,d,l,u,f) for r in states_v for d in states_v for l in states_v
 #                                    for u in states_v for f in states_f]
 
-(digits(2, base=2, pad=Nf))
-
 ind_f_dict = GfPEPS.translate_occ_to_TM_dict(Nf)
 ind_v_dict = GfPEPS.translate_occ_to_TM_dict(Nv)
-
-perm = vcat(1:2:(2Nv), 2:2:(2Nv))
-perm = Tuple(vcat(1:Nf, perm .+ Nf, perm .+ (Nf + 2Nv)))
 
 # Threads.@threads for state in states
 for state in states
     f_occ, l_occ, r_occ, d_occ, u_occ = state
 
     # convert occ to bitstrings
-    f = reverse(digits(f_occ, base=2, pad=Nf))
-    u = reverse(digits(u_occ, base=2, pad=Nv))
-    l = reverse(digits(l_occ, base=2, pad=Nv))
-    d = reverse(digits(d_occ, base=2, pad=Nv))
-    r = reverse(digits(r_occ, base=2, pad=Nv))
+    f = (digits(f_occ, base=2, pad=Nf))
+    u = (digits(u_occ, base=2, pad=Nv))
+    l = (digits(l_occ, base=2, pad=Nv))
+    d = (digits(d_occ, base=2, pad=Nv))
+    r = (digits(r_occ, base=2, pad=Nv))
 
     # Boolean occupation vector to select rows from R_mat_full (true if occupied)
-    # occ_bool = map(==(1), vcat(f,l,r,d,u))
-    occ_bool = map(==(1), vcat(f,u,r,d,l))
+    # occ_bool = map(==(1), reverse(vcat(f,l,r,d,u)))
+    occ_bool = (map(==(1), vcat(f,u,r,d,l)))
+    # occ_bool = (map(==(1), vcat(l,d,r,u,f)))
     M_prime = sum(occ_bool)
 
     parity_f = mod(sum(f), 2)
@@ -85,32 +82,43 @@ for state in states
         continue
     end
 
-    nL = sum(l); nR = sum(r); nD = sum(d); nU = sum(u)
-    gauge_exponent = nL*nR + nL*nD + nL*nU + nR*nU + nD*nU
-    gauge_sign = isodd(gauge_exponent) ? -1 : 1
-
-    # gauge_exponent = sum(u) + sum(l)
+    # nL = sum(l); nR = sum(r); nD = sum(d); nU = sum(u)
+    # gauge_exponent = nL*nR + nL*nD + nL*nU + nR*nU + nD*nU
     # gauge_sign = isodd(gauge_exponent) ? -1 : 1
-    # gauge_exponent2 = sum(r) + sum(d)
+
+    # gauge_exponent1 = sum(l) + sum(r)
+    # gauge_sign1 = isodd(gauge_exponent1) ? -1 : 1
+    # gauge_exponent2 = sum(u) + sum(d)
     # gauge_sign2 = isodd(gauge_exponent2) ? -1 : 1
     # gauge_sign = gauge_sign1 * gauge_sign2
+
+    gauge_exponent = sum(l)* (sum(l) + sum(r) + sum(d)) +
+                 sum(u)*(sum(d) +sum(r))
+    parity_gate = isodd(gauge_exponent) ? -1 : 1
+    # parity_gate = 1
 
     if M_prime!=0  
         # build R_mat
         R_mat = R_mat_full[occ_bool,:]
-        # fsign = (-1)^(1/2 * M_prime*(M_prime-1)) # fermionic sign from reordering
-        fsign = isodd((M_prime * (M_prime - 1)) ÷ 2) ? -1 : 1
-        pf = pfaffian([zeros(M_prime,M_prime) R_mat; -transpose(R_mat) Q_mat])
+        fsign = (-1)^(0.5 * M_prime*(M_prime-1)) # fermionic sign from reordering
+        # fsign = 1
+        # fsign = isodd((M_prime * (M_prime - 1)) ÷ 2) ? -1 : 1
+        pf_mat = [zeros(M_prime,M_prime) R_mat; -transpose(R_mat) Q_mat]
+
+        pf = pfaffian(pf_mat)
 
         # T[ind_f_dict[f], ind_v_dict[u], ind_v_dict[r], ind_v_dict[d], ind_v_dict[l]] = gauge_sign * fsign * pf / v_prod
-        T[ind_f_dict[f], ind_v_dict[l], ind_v_dict[r], ind_v_dict[d], ind_v_dict[u]] = fsign * pf / v_prod
+        T[ind_f_dict[f], ind_v_dict[l], ind_v_dict[r], ind_v_dict[d], ind_v_dict[u]] = fsign * parity_gate * pf / v_prod
+        # T[ind_f_dict[f], ind_v_dict[r], ind_v_dict[l], ind_v_dict[d], ind_v_dict[u]] = fsign * pf / v_prod
+        # T[ind_f_dict[f], ind_v_dict[d], ind_v_dict[u], ind_v_dict[r], ind_v_dict[l]] = fsign * pf / v_prod
     else # all unoccupied
-        T[ind_f_dict[f], ind_v_dict[u], ind_v_dict[r], ind_v_dict[d], ind_v_dict[l]] = pfaffian(Q_mat) / v_prod
-        # T[ind_f_dict[f], ind_v_dict[l], ind_v_dict[r], ind_v_dict[d], ind_v_dict[u]] = pfaffian(Q_mat) / v_prod
+        # T[ind_f_dict[f], ind_v_dict[u], ind_v_dict[r], ind_v_dict[d], ind_v_dict[l]] = pfaffian(Q_mat) / v_prod
+        T[1,1,1,1,1] = pfaffian(Q_mat) / v_prod
     end
 end
 
 pepsT = InfinitePEPS(TensorMap(T, physical_spaces ← virtual_spaces))
+
 sector_data = pepsT.A[1][(FermionParity(1), FermionParity(0), FermionParity(1), FermionParity(0), FermionParity(0))]
 sector_data2 = peps.A[1][(FermionParity(1), FermionParity(0), FermionParity(1), FermionParity(0), FermionParity(0))]
 sector_data ≈ sector_data2
@@ -156,51 +164,19 @@ energy3 = GfPEPS.energy_CM(Γ_fiducial, bz, Nf; t=t, pairing_type="d_wave", Δ_0
 @show energy2
 @show energy3
 
-#=  =#
 
-peps
-
-@show states[5]
-
-state = (0,0,0,0,3)
-occupations_to_linear(state...,Nf,Nv)
-
-sf = [0,0]
-sl = [0,0]
-su = [1,1]
-sd = [0,0]
-sr = [0,0]
-
+ind_f_dict2 = GfPEPS.translate_occ_to_TM_dict(Nf)
+ind_v_dict2 = GfPEPS.translate_occ_to_TM_dict(Nv)
+state = (1,1,0,0,0)
+f_occ, l_occ, r_occ, d_occ, u_occ = state
+# convert occ to bitstrings
+f = (digits(f_occ, base=2, pad=Nf))
+l = (digits(l_occ, base=2, pad=Nv))
+r = (digits(r_occ, base=2, pad=Nv))
+d = (digits(d_occ, base=2, pad=Nv))
+u = (digits(u_occ, base=2, pad=Nv))
 TTest, physical_spaces, virtual_spaces = GfPEPS.get_empty_peps_tensor(Nf, Nv)
-TTest2 = reshape(TTest, (2^Nf, 2^Nv, 2^Nv, 2^Nv, 2^Nv))
-# TTest[occupations_to_linear(state...,Nf,Nv)] = 8.8
-# TTest2[1,1,2,1,1] = 8.8
-TTest2[ind_f_dict[sf], ind_v_dict[sl], ind_v_dict[su], ind_v_dict[sd], ind_v_dict[sr]] = 8.8
-TM = TensorMap(TTest2, physical_spaces ← virtual_spaces)
-sector_data = TM[(FermionParity(0), FermionParity(0), FermionParity(0), FermionParity(0), FermionParity(0))]
+TTest[ind_f_dict2[f], ind_v_dict2[l], ind_v_dict2[r], ind_v_dict2[d], ind_v_dict2[u]] = 8.88888888888888
+TTestT = TensorMap(TTest, physical_spaces ← virtual_spaces)
+TTestT[(FermionParity(1), FermionParity(1), FermionParity(0), FermionParity(0), FermionParity(0))]
 
-
-pepsTest = InfinitePEPS(TensorMap(T, physical_spaces ← virtual_spaces))
-
-T
-
-a[[1,1]]=1
-
-peps
-
-# pfaff_mat = [zeros(N,N) R_mat_full; -transpose(R_mat_full) Q_mat]
-# pfaff_mat = (pfaff_mat - transpose(pfaff_mat)) / 2 # enforce exact skew-symmetry
-
-# (-1)^(1/2 * N*(N-1)) / v_prod * pfaffian(pfaff_mat)
- 
-peps = translate(X_opt, Nv, Nf)
-T
-
-A = peps.A[1]
-
-pfaffian(Q_mat) / v_prod
-
-vec(A)
-
-space(peps.A[1])
-space(pepsA.A[1])

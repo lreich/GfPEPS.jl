@@ -114,54 +114,6 @@ function absorb_phases(S::AbstractMatrix, X::AbstractMatrix)
     return S2, real(X2)
 end
 
-# function skew_canonical_form(P::AbstractMatrix)
-#     # Check skew-symmetry
-#     @assert transpose(P) ≈ -P
-
-#     W = P'P
-#     @assert ishermitian(W)
-
-#     n = size(W,1)
-#     p = div(rank(W),2)
-#     E, Φ = eigen(Hermitian(W); sortby = (x -> -real(x)))
-#     alphas = sqrt.(abs.(E))
-
-#     S = similar(P)
-
-#     # For each twofold eigenspace:
-#     #  - pick one eigenvector v,
-#     #  - form partner w = P' * conj(v) / α and project it into the eigenspace,
-#     #  - orthonormalize the two vectors inside the eigenspace (thin QR),
-#     #  - enforce the sign convention so block = [0 +α; -α 0].
-#     for μ in 1:p
-#         Φb = Φ[:, 2μ-1:2μ]                    # basis of the 2D eigenspace
-#         v = Φb[:, 1]                          # pick representative
-#         w = (P' * conj(v)) / alphas[2μ-1]     # partner (α>0)
-#         w_proj = Φb * (Φb' * w)               # project partner into same eigenspace
-
-#         # orthonormalize inside the eigenspace
-#         Q = qr(hcat(v, w_proj))
-#         S[:, 2μ-1:2μ] = Matrix(Q.Q)[:, 1:2]
-
-#         # ensure the off-diagonal (1,2) is positive: flip second column if needed
-#         blk = real(transpose(S[:, 2μ-1:2μ]) * P * S[:, 2μ-1:2μ])
-#         if blk[1,2] < 0
-#             S[:, 2μ] .*= -1
-#         end
-#     end
-#     # append any remaining zero-modes
-#     if 2p < n
-#         S[:, 2p+1:n] = Φ[:, 2p+1:n]
-#     end
-#     @assert S' * S ≈ I
-
-#     X = real.(transpose(S) * P * S)
-#     X[abs.(X) .< 1e-12] .= 0.0 # remove near zero entries for better readability
-
-#     return S, X
-# end
-
-
 # Build a permutation matrix S_perm so that (S_perm' * P_bar1 * S_perm)
 # has 2×2 skew blocks with Re(upper-right) ≥ 0 (i.e. "positive above, negative below")
 function canonical_skew_permutation(P::AbstractMatrix)
