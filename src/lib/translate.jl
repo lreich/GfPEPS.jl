@@ -209,6 +209,21 @@ function get_empty_peps_tensor(Nf::Int, Nv::Int)
     return T, physical_spaces, virtual_spaces
 end
 
+function get_empty_peps_tensor2(Nf::Int, Nv::Int)
+    # single-site graded spaces
+    V_phys = Vect[fℤ₂](0 => 1, 1 => 1)
+    V_virt = Vect[fℤ₂](0 => 1, 1 => 1)
+
+    physical_spaces = reduce(⊗, fill(V_phys, Nf))
+    virtual_spaces = reduce(⊗, fill(V_virt, 4*Nv))
+    codomain_spaces = reduce(⊗, [physical_spaces, virtual_spaces])
+    domain_space = ProductSpace{GradedSpace{FermionParity, Tuple{Int64, Int64}}, 0}()
+
+    T = zeros(ComplexF64, ntuple(_ -> 2, Nf + 4Nv))
+
+    return T, codomain_spaces, domain_space
+end
+
 function translate_new(X::AbstractMatrix, Nf::Int, Nv::Int)
     Γ_fiduc = Γ_fiducial(X, Nv, Nf)
 
@@ -270,6 +285,15 @@ function translate_new(X::AbstractMatrix, Nf::Int, Nv::Int)
         if M_prime!=0  
             # build R_mat
             R_mat = R_mat_full[occ_bool,:]
+
+            if sum(d) > 0 || sum(l) > 0 
+                occ_d_l = vcat(digits(0, base=2, pad=Nf), 
+                            digits(0, base=2, pad=Nv), 
+                            digits(0, base=2, pad=Nv), d, l)
+                occ_d_l = occ_d_l .== 1
+                R_mat[occ_d_l,:] = conj(R_mat[occ_d_l,:])
+            end
+
             fsign = isodd((M_prime * (M_prime - 1)) ÷ 2) ? -1 : 1 # fermionic sign from reordering
             pf = pfaffian([zeros(M_prime,M_prime) R_mat; -transpose(R_mat) Q_mat])
 
@@ -281,6 +305,65 @@ function translate_new(X::AbstractMatrix, Nf::Int, Nv::Int)
 
     peps = InfinitePEPS(TensorMap(T, physical_spaces ← virtual_spaces))
     return peps
+end
+
+function translate_new2(X::AbstractMatrix, Nf::Int, Nv::Int)
+    Γ_fiduc = Γ_fiducial(X, Nv, Nf)
+
+    H = get_parent_hamiltonian(Γ_fiduc, Nf, Nv)
+    _, M = bogoliubov(H)
+
+    # Bloch Messiah decomposition
+    Dmat,UVmat,Cmat = bloch_messiah_decomposition(M)
+    Dmat_prime,UVmat_prime,Cmat_prime = truncated_bloch_messiah(Dmat, UVmat, Cmat)
+
+    D, Ubar, Vbar, C = get_mats_from_bloch_messiah(Dmat_prime, UVmat_prime, Cmat_prime)
+
+    M_A = size(Vbar, 2)
+    parity = mod(size(Vbar, 1), 2)
+    v_prod = prod([abs(Vbar[i-1, i]) for i in 2:2:M_A])
+
+    # compute full matrices for overlap
+    R_mat_full = D*Vbar # has the same ordering as H
+    Q_mat = Ubar*Vbar # has the same ordering as H
+    @assert Q_mat ≈ - transpose(Q_mat)
+    Q_mat = (Q_mat - transpose(Q_mat)) / 2 # enforce exact skew-symmetry
+
+    N = Nf + 4*Nv
+    N_states = 0:(2^N - 1)
+    states = digits.(N_states, base=2, pad=N) # (f,u,r,d,l)
+
+    T, codomain_space, domain_space = get_empty_peps_tensor2(Nf, Nv)
+
+    # get tensor elements with overlap formula from 10.1103/PhysRevB.107.125128
+    Threads.@threads for i in eachindex(states)
+        state = states[i]
+        state_ind = state .+ 1
+        occ_bool = state .== 1
+        M_prime = sum(occ_bool)
+
+        parity_f = mod(sum(state[1:Nf]), 2)
+        parity_v = mod(sum(state[Nf+1:end]), 2)
+
+        if mod(M_prime,2) != parity || parity_f != parity_v # skip if parity doesn't match
+            continue
+        end
+
+        if M_prime!=0  
+            # build R_mat
+            R_mat = R_mat_full[occ_bool,:]
+            fsign = isodd((M_prime * (M_prime - 1)) ÷ 2) ? -1 : 1 # fermionic sign from reordering
+            pf = pfaffian([zeros(M_prime,M_prime) R_mat; -transpose(R_mat) Q_mat])
+            T[state_ind...] = fsign * pf / v_prod
+        else # all unoccupied
+            T[state_ind...] = pfaffian(Q_mat) / v_prod
+        end
+    end
+
+    fiducial_state = TensorMap(T, codomain_space ← domain_space)
+    ω = virtual_bond_state(Nv)
+
+    return get_peps(ω, fiducial_state)
 end
 
 function translate_occ_to_TM_dict(N)
