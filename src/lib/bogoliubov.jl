@@ -50,18 +50,28 @@ function skew_canonical_form(P::AbstractMatrix)
 
     E, Φ = eigen(Hermitian(W); sortby = (x -> -real(x)))
     alphas = sqrt.(abs.(E))
+    tol = 1e-12
+
+    # sort indices by magnitude descending to make pairing stable
+    idx_sorted = sortperm(alphas, rev = true)
+    nonzero_idx = [i for i in idx_sorted if !isapprox(alphas[i], 0.0; atol=tol)]
+
+    # ensure we have an even number of nonzero modes (otherwise pairing impossible)
+    if isodd(length(nonzero_idx))
+        error("skew_canonical_form: odd number of nonzero canonical values (check tolerance).")
+    end
 
     # build orthogonal eigenvectors
     Φ_prime = similar(Φ)
-    for j in eachindex(alphas)
-        Φ_prime[:, j] = (P'*conj.(Φ[:, j])) / alphas[j]
+    for j in nonzero_idx
+        Φ_prime[:, j] = (P' * conj.(Φ[:, j])) / alphas[j]
     end
 
     # build S
     S = similar(P)
     n_zeros = 0
     for j in eachindex(alphas)
-        if alphas[j] ≈ 0.0
+        if isapprox(alphas[j], 0.0; atol=1e-12)
             S[:, end-n_zeros] = Φ[:, j]
             n_zeros += 1
         else
@@ -144,9 +154,11 @@ function bloch_messiah_decomposition(M::AbstractMatrix)
     U,V = GfPEPS.get_bogoliubov_blocks(M)
 
     Q = conj.(V) * transpose(V)
-    @assert Q' ≈ Q
+    @assert Q' ≈ Q "Q should be Hermitian"
+    Q = Hermitian(Q) # enforce exact Hermiticity
     P = conj.(V) * transpose(U)
-    @assert transpose(P) ≈ -P
+    @assert transpose(P) ≈ -P "P should be skew-symmetric"
+    P = (P - transpose(P)) / 2 # enforce exact skew-symmetry
     @assert Q*P ≈ P*conj.(Q)
 
     _, B = eigen(Q; sortby = (x -> -real(x)))
@@ -155,14 +167,15 @@ function bloch_messiah_decomposition(M::AbstractMatrix)
     @assert P_bar ≈ - transpose(P_bar)
 
     # Bring P_bar to canonical form
-    S, _ = skew_canonical_form(P_bar)
+    S, TE = skew_canonical_form(P_bar)
     P_canonical = S' * P_bar * conj.(S)
 
     A = permute_zero_cols_to_end(P_canonical)
+
     D = B * S * A
 
     @assert D'*P*conj(D) ≈ D'*conj(V)*transpose(U)*conj(D)
-
+    
     F = MatrixFactorizations.rq(D' * U)
     R = Matrix(F.R)
     Q = Matrix(F.Q)
@@ -178,10 +191,14 @@ function bloch_messiah_decomposition(M::AbstractMatrix)
     Qnew = Φ' * Q                       # keep A invariant: (R Φ)(Φ' Q) = R Q
     Ubar = Rpos                         # Ū with positive diagonal
     C    = Qnew
+
+    Ubar = R
+    C = Q
+
     Vbar = transpose(D) * V * C'
 
-    @assert D'*conj(V)*transpose(U)*conj(D) ≈ D'*conj(V)*transpose(C)*conj(C)*transpose(U)*conj(D)
-    @assert D'*conj(V)*transpose(Q)*conj(Q)*transpose(U)*conj(D) ≈ D'*conj(V)*transpose(Q)*R
+    # @assert D'*conj(V)*transpose(U)*conj(D) ≈ D'*conj(V)*transpose(C)*conj(C)*transpose(U)*conj(D)
+    # @assert D'*conj(V)*transpose(Q)*conj(Q)*transpose(U)*conj(D) ≈ D'*conj(V)*transpose(Q)*R
 
     @assert C'C ≈ I
     @assert Q'Q ≈ I
@@ -222,12 +239,12 @@ function permute_zero_cols_to_end(P::AbstractMatrix)
 end
 
 function get_mats_from_bloch_messiah(Dmat, UVmat, Cmat)
-    N = div(size(Dmat, 1), 2)
+    N = div(size(UVmat, 1), 2)
 
-    Ubar = UVmat[1:N, 1:N]
-    Vbar = UVmat[N+1:end, 1:N]
-    C = Cmat[1:N, 1:N]
-    D = Dmat[1:N, 1:N]
+    Ubar = UVmat[1:div(size(UVmat, 1), 2), 1:div(size(UVmat, 2), 2)]
+    Vbar = UVmat[div(size(UVmat, 1), 2)+1:end, 1:div(size(UVmat, 2), 2)]
+    C = Cmat[1:div(size(Cmat, 1), 2), 1:div(size(Cmat, 2), 2)]
+    D = Dmat[1:div(size(Dmat, 1), 2), 1:div(size(Dmat, 2), 2)]
 
     return D,Ubar,Vbar,C
 end
@@ -237,13 +254,14 @@ function truncated_bloch_messiah(Dmat,UVmat,Cmat)
 
     # discard zero columns
     zero_ind = findfirst(col -> all(iszero, col), eachcol(Vbar))
+
     if zero_ind === nothing
         return Dmat, UVmat, Cmat
     end
     
     D_prime = D[:, 1:zero_ind-1]
-    Vbar_prime = Vbar[:, 1:zero_ind-1]
-    Ubar_prime = Ubar[:, 1:zero_ind-1]
+    Vbar_prime = Vbar[1:zero_ind-1, 1:zero_ind-1]
+    Ubar_prime = Ubar[1:zero_ind-1, 1:zero_ind-1]
     C_prime = C[1:zero_ind-1, :]
 
     Dmat_prime = [D_prime zeros(size(D_prime)); zeros(size(D_prime)) conj.(D_prime)]

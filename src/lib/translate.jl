@@ -218,6 +218,7 @@ function translate_new(X::AbstractMatrix, Nf::Int, Nv::Int)
     # Bloch Messiah decomposition
     Dmat,UVmat,Cmat = bloch_messiah_decomposition(M)
     Dmat_prime,UVmat_prime,Cmat_prime = truncated_bloch_messiah(Dmat, UVmat, Cmat)
+
     D, Ubar, Vbar, C = get_mats_from_bloch_messiah(Dmat_prime, UVmat_prime, Cmat_prime)
 
     M_A = size(Vbar, 1)
@@ -227,6 +228,7 @@ function translate_new(X::AbstractMatrix, Nf::Int, Nv::Int)
     # compute full matrices for overlap
     R_mat_full = D*Vbar
     Q_mat = Ubar*Vbar
+
     @assert Q_mat ≈ - transpose(Q_mat)
     Q_mat = (Q_mat - transpose(Q_mat)) / 2 # enforce exact skew-symmetry
 
@@ -244,6 +246,7 @@ function translate_new(X::AbstractMatrix, Nf::Int, Nv::Int)
 
     # get tensor elements with overlap formula from 10.1103/PhysRevB.107.125128
     Threads.@threads for state in states
+    # for state in states
         f_occ, u_occ, r_occ, d_occ, l_occ = state
 
         # convert occ to bitstrings
