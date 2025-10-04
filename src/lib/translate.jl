@@ -47,8 +47,8 @@ function get_peps(ω::AbstractTensor{T, S, N1}, F::AbstractTensor{T, S, N2}) whe
     F = (fuser_physical ⊗ reduce(⊗, fill(fuser_virtual, 4))) * F 
 
     # contract virtual legs by computing: A=⟨ω|F⟩
-    @tensor A[-1; -2 -3 -4 -5] := conj(ω[1 -2]) * conj(ω[2 -3]) * F[-1 -5 2 -4 1]
-    # @tensor A[-1; -2 -3 -4 -5] := conj(ω[3 -4]) * conj(ω[2 -3]) * F[-1 -2 2 3 -5]
+    # @tensor A[-1; -2 -3 -4 -5] := conj(ω[1 -2]) * conj(ω[2 -3]) * F[-1 -5 2 -4 1]
+     @tensor A[-1; -2 -3 -4 -5] := conj(ω[1 -2]) * conj(ω[2 -3]) * F[-1 1 2 -4 -5]
     
     return InfinitePEPS(A; unitcell = (1, 1))
 end
@@ -173,15 +173,34 @@ function get_parent_hamiltonian(Γ::AbstractMatrix, Nf::Int, Nv::Int)
     )
     Γ_fiducial_dirac = Γ_fiducial_dirac[perm_total, perm_total]
 
+    # now reorder to (f,u,r,d,l)
+    L = collect(Nf+1:Nf+Nv)    # l1, l2, ...
+    R = collect(Nf+Nv+1:Nf+2Nv)   # r1, r2, ...
+    D = collect(Nf+2Nv+1:Nf+3Nv)  # d1, d2, ...
+    U = collect(Nf+3Nv+1:Nf+4Nv)  # u1, u2, ...
+    perm_virtual = vcat(U, R, D, L)
+
+    perm_reorder = vcat(1:Nf, 
+        perm_virtual,
+        (Nf+4Nv) .+ (1:Nf), # f†
+        (Nf+4Nv) .+ perm_virtual # virtual†
+    )
+    Γ_fiducial_dirac = Γ_fiducial_dirac[perm_reorder, perm_reorder]
+
     @assert Γ_fiducial_dirac' ≈ -Γ_fiducial_dirac "Fiducial state CM in Dirac representation must be anti-hermitian"
     @assert Γ_fiducial_dirac*Γ_fiducial_dirac' ≈ I / 4 "Fiducial state CM in Dirac representation must be pure"
 
     return Hermitian(-2im .* Γ_fiducial_dirac)
 end
 
+""" 
+    get_empty_peps_tensor(Nf::Int, Nv::Int)
+
+Create an empty fPEPS tensor with the correct dimensions and spaces for given number of physical (Nf) and virtual (Nv) fermions.
+"""
 function get_empty_peps_tensor(Nf::Int, Nv::Int)
-    physical_spaces = Vect[fℤ₂](0 => Nf, 1 => Nf)
-    V_bonds = Vect[fℤ₂](0 => Nv, 1 => Nv)
+    physical_spaces = Vect[fℤ₂](0 => 2^(Nf - 1), 1 => 2^(Nf - 1))
+    V_bonds = Vect[fℤ₂](0 => 2^(Nv - 1), 1 => 2^(Nv - 1))
     virtual_spaces = V_bonds ⊗ V_bonds ⊗ V_bonds' ⊗ V_bonds'
 
     T = zeros(ComplexF64, dim(physical_spaces), dim(virtual_spaces))
@@ -191,9 +210,9 @@ function get_empty_peps_tensor(Nf::Int, Nv::Int)
 end
 
 function translate_new(X::AbstractMatrix, Nf::Int, Nv::Int)
-    Γ_fiducial = Γ_fiducial(X, Nv, Nf)
+    Γ_fiduc = Γ_fiducial(X, Nv, Nf)
 
-    H = get_parent_hamiltonian(Γ_fiducial, Nf, Nv)
+    H = get_parent_hamiltonian(Γ_fiduc, Nf, Nv)
     _, M = bogoliubov(H)
 
     # Bloch Messiah decomposition
@@ -203,7 +222,7 @@ function translate_new(X::AbstractMatrix, Nf::Int, Nv::Int)
 
     M_A = size(Vbar, 1)
     parity = mod(M_A,2)
-    v_prod = prod([abs(Vbar[i-1, i]) for i in 2:2:N])
+    v_prod = prod([abs(Vbar[i-1, i]) for i in 2:2:M_A])
 
     # compute full matrices for overlap
     R_mat_full = D*Vbar
@@ -215,8 +234,8 @@ function translate_new(X::AbstractMatrix, Nf::Int, Nv::Int)
     states_v = 0:(2^Nv - 1)
 
     # Cartesian product; store as tuples
-    states = [(f,l,r,d,u) for f in states_f for l in states_v for r in states_v
-                                    for d in states_v for u in states_v]
+    states = [(f,u,r,d,l) for f in states_f for u in states_v for r in states_v
+                                   for d in states_v for l in states_v]
 
     ind_f_dict = translate_occ_to_TM_dict(Nf)
     ind_v_dict = translate_occ_to_TM_dict(Nv)
@@ -224,22 +243,22 @@ function translate_new(X::AbstractMatrix, Nf::Int, Nv::Int)
     T, physical_spaces, virtual_spaces = get_empty_peps_tensor(Nf, Nv)
 
     # get tensor elements with overlap formula from 10.1103/PhysRevB.107.125128
-    for state in states
-        f_occ, l_occ, r_occ, d_occ, u_occ = state
+    Threads.@threads for state in states
+        f_occ, u_occ, r_occ, d_occ, l_occ = state
 
         # convert occ to bitstrings
-        f = digits(f_occ, base=2, pad=Nf)
-        u = digits(u_occ, base=2, pad=Nv)
-        l = digits(l_occ, base=2, pad=Nv)
-        d = digits(d_occ, base=2, pad=Nv)
-        r = digits(r_occ, base=2, pad=Nv)
+        f = (digits(f_occ, base=2, pad=Nf))
+        u = (digits(u_occ, base=2, pad=Nv))
+        l = (digits(l_occ, base=2, pad=Nv))
+        d = (digits(d_occ, base=2, pad=Nv))
+        r = (digits(r_occ, base=2, pad=Nv))
 
         # Boolean occupation vector to select rows from R_mat_full (true if occupied)
-        occ_bool = map(==(1), vcat(f,l,r,d,u))
-        M_prime = count(==(1), occ_bool)
+        occ_bool = vcat(f, u, r, d, l) .== 1
+        M_prime = sum(occ_bool)
 
-        parity_f = mod(count(==(1), f), 2)
-        parity_v = mod(count(==(1), vcat(u,l,d,r)), 2)
+        parity_f = mod(sum(f), 2)
+        parity_v = mod(sum(l) + sum(u) + sum(r) + sum(d), 2)
 
         if mod(M_prime,2) != parity || parity_f != parity_v # skip if parity doesn't match
             continue
@@ -248,12 +267,12 @@ function translate_new(X::AbstractMatrix, Nf::Int, Nv::Int)
         if M_prime!=0  
             # build R_mat
             R_mat = R_mat_full[occ_bool,:]
-            fsign = (-1)^(1/2 * M_prime*(M_prime-1)) # fermionic sign from reordering
+            fsign = isodd((M_prime * (M_prime - 1)) ÷ 2) ? -1 : 1 # fermionic sign from reordering
             pf = pfaffian([zeros(M_prime,M_prime) R_mat; -transpose(R_mat) Q_mat])
 
-            T[ind_f_dict[f], ind_v_dict[l], ind_v_dict[d], ind_v_dict[r], ind_v_dict[u]] = fsign * pf / v_prod
+            T[ind_f_dict[f], ind_v_dict[u], ind_v_dict[r], ind_v_dict[d], ind_v_dict[l]] = fsign * pf / v_prod
         else # all unoccupied
-            T[ind_f_dict[f], ind_v_dict[u], ind_v_dict[d], ind_v_dict[r], ind_v_dict[l]] = pfaffian(Q_mat) / v_prod
+            T[1,1,1,1,1] = pfaffian(Q_mat) / v_prod
         end
     end
 
