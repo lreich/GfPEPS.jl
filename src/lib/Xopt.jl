@@ -58,8 +58,8 @@ function get_X_opt(Nf::Int, Nv::Int, t::Real, μ::Real, pairing_type::String, Δ
     # First, find a better initial guess for X by solving for smaller system sizes (see: 10.1103/PhysRevLett.129.206401) 
     @info "Finding better initial guess for X by solving smaller system sizes..."
     # res_init = Optim.optimize(loss_init, g_init!, X, Optim.LBFGS(;m=20,manifold=Optim.Stiefel()), Optim.Options(
-    res_init = Optim.optimize(loss_init, g!, X, Optim.BFGS(;manifold=Optim.Stiefel()), Optim.Options(
-        iterations = maxiter,
+    res_init = Optim.optimize(loss_init, g_init!, X, Optim.BFGS(;manifold=Optim.Stiefel()), Optim.Options(
+        iterations = 1000,
         g_tol = grad_tol,
         show_trace = verbose,
         successive_f_tol = 10,
