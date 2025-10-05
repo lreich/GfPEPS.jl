@@ -12,6 +12,8 @@ function get_X_opt(Nf::Int, Nv::Int, t::Real, μ::Real, pairing_type::String, Δ
     verbose::Bool=true,
     seed::Int=1234)
 
+    MKL.set_num_threads(Sys.CPU_THREADS) 
+
     Random.seed!(seed)
 
     # construct Brillouin zone
@@ -55,23 +57,35 @@ function get_X_opt(Nf::Int, Nv::Int, t::Real, μ::Real, pairing_type::String, Δ
 
     # First, find a better initial guess for X by solving for smaller system sizes (see: 10.1103/PhysRevLett.129.206401) 
     @info "Finding better initial guess for X by solving smaller system sizes..."
-    res_init = Optim.optimize(loss_init, g_init!, X, Optim.LBFGS(;m=20,manifold=Optim.Stiefel()), Optim.Options(
+    # res_init = Optim.optimize(loss_init, g_init!, X, Optim.LBFGS(;m=20,manifold=Optim.Stiefel()), Optim.Options(
+    res_init = Optim.optimize(loss, g!, X, Optim.BFGS(;manifold=Optim.Stiefel()), Optim.Options(
         iterations = maxiter,
         g_tol = grad_tol,
         show_trace = verbose,
         successive_f_tol = 10,
         f_reltol = f_reltol
     ))
+    if Optim.converged(res_init)
+        @info "Optimization for initial system size converged after $(res_init.iterations) iterations."
+    else
+        @warn "Optimization for initial system size did not converge. \n Final gradient norm: $(res_init.g_residual)."
+    end
 
     @info "Finding optimal X for full system size..."
     # optimize X for the full system size
-    res = Optim.optimize(loss, g!, Optim.minimizer(res_init), Optim.LBFGS(;m=20,manifold=Optim.Stiefel()), Optim.Options(
+    # res = Optim.optimize(loss, g!, Optim.minimizer(res_init), Optim.LBFGS(;m=20,manifold=Optim.Stiefel()), Optim.Options(
+    res = Optim.optimize(loss, g!, Optim.minimizer(res_init), Optim.BFGS(;manifold=Optim.Stiefel()), Optim.Options(
         iterations = maxiter,
         g_tol = grad_tol,
         show_trace = verbose,
         successive_f_tol = 10,
         f_reltol = f_reltol
     ))
+    if Optim.converged(res)
+        @info "Optimization for initial system size converged after $(res.iterations) iterations."
+    else
+        @warn "Optimization for final system size did not converge. \n Final gradient norm: $(res.g_residual)."
+    end
 
     @show Optim.minimum(res)
     exact_energy = exact_energy_BCS_k(bz,t,μ,pairing_type,Δ_0)

@@ -5,10 +5,8 @@ using MKL
 using LinearAlgebra
 using Statistics
 using BlockDiagonals
-# using ITensors, ITensorMPS
 using Optim
 using Zygote
-# using Enzyme
 using JSON: parsefile
 using Random
 using TensorOperations

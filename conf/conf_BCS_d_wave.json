@@ -23,8 +23,8 @@
         "pairing_type": "d_wave",
         "Δ_0": 1.0,
         "μ": 1.0, 
-        "hole_density": 0.13,
-        "μ_from_hole_density": true,
+        "hole_density": 0.0,
+        "μ_from_hole_density": false,
         "lagrange_multiplier_density": 1e2
     },
 

@@ -48,7 +48,7 @@ function get_peps(ω::AbstractTensor{T, S, N1}, F::AbstractTensor{T, S, N2}) whe
 
     # contract virtual legs by computing: A=⟨ω|F⟩
     # @tensor A[-1; -2 -3 -4 -5] := conj(ω[1 -2]) * conj(ω[2 -3]) * F[-1 -5 2 -4 1]
-     @tensor A[-1; -2 -3 -4 -5] := conj(ω[1 -2]) * conj(ω[2 -3]) * F[-1 1 2 -4 -5]
+    @tensor A[-1; -2 -3 -4 -5] := conj(ω[1 -2]) * conj(ω[2 -3]) * F[-1 1 2 -4 -5]
     
     return InfinitePEPS(A; unitcell = (1, 1))
 end
@@ -57,7 +57,7 @@ end
 Translate the orthogonal matrix `X` defining the fiducial state's covariance matrix,
 to Gaussian fPEPS in PEPSKit format.
 """
-function translate(X::AbstractMatrix, Nf::Int, Nv::Int)
+function translate_naive(X::AbstractMatrix, Nf::Int, Nv::Int)
     @assert X*X' ≈ I "X must be orthogonal"
     Γ = Γ_fiducial(X, Nv, Nf)
 
@@ -198,7 +198,7 @@ end
 
 Create an empty fPEPS tensor with the correct dimensions and spaces for given number of physical (Nf) and virtual (Nv) fermions.
 """
-function get_empty_peps_tensor(Nf::Int, Nv::Int)
+function get_empty_peps_tensor_old(Nf::Int, Nv::Int)
     physical_spaces = Vect[fℤ₂](0 => 2^(Nf - 1), 1 => 2^(Nf - 1))
     V_bonds = Vect[fℤ₂](0 => 2^(Nv - 1), 1 => 2^(Nv - 1))
     virtual_spaces = V_bonds ⊗ V_bonds ⊗ V_bonds' ⊗ V_bonds'
@@ -209,19 +209,33 @@ function get_empty_peps_tensor(Nf::Int, Nv::Int)
     return T, physical_spaces, virtual_spaces
 end
 
-function get_empty_peps_tensor2(Nf::Int, Nv::Int)
-    # single-site graded spaces
-    V_phys = Vect[fℤ₂](0 => 1, 1 => 1)
-    V_virt = Vect[fℤ₂](0 => 1, 1 => 1)
+function get_empty_fpeps_tensor(Nf::Int, Nv::Int)
+    # # single-site graded spaces
+    # V_phys = Vect[fℤ₂](0 => 1, 1 => 1)
+    # V_virt = Vect[fℤ₂](0 => 1, 1 => 1)
 
-    physical_spaces = reduce(⊗, fill(V_phys, Nf))
-    virtual_spaces = reduce(⊗, fill(V_virt, 4*Nv))
+    # physical_spaces = reduce(⊗, fill(V_phys, Nf))
+    # virtual_spaces = reduce(⊗, fill(V_virt, 4*Nv))
+    # codomain_spaces = reduce(⊗, [physical_spaces, virtual_spaces])
+    # domain_space = ProductSpace{GradedSpace{FermionParity, Tuple{Int64, Int64}}, 0}()
+
+    # T = zeros(ComplexF64, ntuple(_ -> 2, Nf + 4Nv))
+
+    # return T, codomain_spaces, domain_space
+
+    physical_spaces = Vect[fℤ₂](0 => 2^(Nf - 1), 1 => 2^(Nf - 1))
+    V_bonds = Vect[fℤ₂](0 => 2^(Nv - 1), 1 => 2^(Nv - 1))
+    virtual_spaces = V_bonds ⊗ V_bonds ⊗ V_bonds ⊗ V_bonds
+
     codomain_spaces = reduce(⊗, [physical_spaces, virtual_spaces])
     domain_space = ProductSpace{GradedSpace{FermionParity, Tuple{Int64, Int64}}, 0}()
 
-    T = zeros(ComplexF64, ntuple(_ -> 2, Nf + 4Nv))
+    T = zeros(ComplexF64, dim(physical_spaces), dim(virtual_spaces))
+    T = reshape(T, (2^Nf, 2^Nv, 2^Nv, 2^Nv, 2^Nv))
+    # T = zeros(ComplexF64, ntuple(_ -> 2, Nf + 4Nv))
 
     return T, codomain_spaces, domain_space
+
 end
 
 function translate_new(X::AbstractMatrix, Nf::Int, Nv::Int)
@@ -257,7 +271,7 @@ function translate_new(X::AbstractMatrix, Nf::Int, Nv::Int)
     ind_f_dict = translate_occ_to_TM_dict(Nf)
     ind_v_dict = translate_occ_to_TM_dict(Nv)
 
-    T, physical_spaces, virtual_spaces = get_empty_peps_tensor(Nf, Nv)
+    T, physical_spaces, virtual_spaces = get_empty_peps_tensor_old(Nf, Nv)
 
     # get tensor elements with overlap formula from 10.1103/PhysRevB.107.125128
     Threads.@threads for state in states
@@ -285,15 +299,6 @@ function translate_new(X::AbstractMatrix, Nf::Int, Nv::Int)
         if M_prime!=0  
             # build R_mat
             R_mat = R_mat_full[occ_bool,:]
-
-            if sum(d) > 0 || sum(l) > 0 
-                occ_d_l = vcat(digits(0, base=2, pad=Nf), 
-                            digits(0, base=2, pad=Nv), 
-                            digits(0, base=2, pad=Nv), d, l)
-                occ_d_l = occ_d_l .== 1
-                R_mat[occ_d_l,:] = conj(R_mat[occ_d_l,:])
-            end
-
             fsign = isodd((M_prime * (M_prime - 1)) ÷ 2) ? -1 : 1 # fermionic sign from reordering
             pf = pfaffian([zeros(M_prime,M_prime) R_mat; -transpose(R_mat) Q_mat])
 
@@ -307,7 +312,7 @@ function translate_new(X::AbstractMatrix, Nf::Int, Nv::Int)
     return peps
 end
 
-function translate_new2(X::AbstractMatrix, Nf::Int, Nv::Int)
+function translate(X::AbstractMatrix, Nf::Int, Nv::Int)
     Γ_fiduc = Γ_fiducial(X, Nv, Nf)
 
     H = get_parent_hamiltonian(Γ_fiduc, Nf, Nv)
@@ -329,21 +334,49 @@ function translate_new2(X::AbstractMatrix, Nf::Int, Nv::Int)
     @assert Q_mat ≈ - transpose(Q_mat)
     Q_mat = (Q_mat - transpose(Q_mat)) / 2 # enforce exact skew-symmetry
 
-    N = Nf + 4*Nv
-    N_states = 0:(2^N - 1)
-    states = digits.(N_states, base=2, pad=N) # (f,u,r,d,l)
+    # N = Nf + 4*Nv
+    # N_states = 0:(2^N - 1)
+    # states = digits.(N_states, base=2, pad=N) # (f,u,r,d,l)
 
-    T, codomain_space, domain_space = get_empty_peps_tensor2(Nf, Nv)
+    states_f = 0:(2^Nf - 1)
+    states_v = 0:(2^Nv - 1)
+
+    # Cartesian product; store as tuples
+    states = [(f,u,r,d,l) for f in states_f for u in states_v for r in states_v
+                                   for d in states_v for l in states_v]
+
+    ind_f_dict = translate_occ_to_TM_dict(Nf)
+    ind_v_dict = translate_occ_to_TM_dict(Nv)
+
+
+    T, codomain_space, domain_space = get_empty_fpeps_tensor(Nf, Nv)
 
     # get tensor elements with overlap formula from 10.1103/PhysRevB.107.125128
-    Threads.@threads for i in eachindex(states)
-        state = states[i]
-        state_ind = state .+ 1
-        occ_bool = state .== 1
+    # Threads.@threads for i in eachindex(states)
+    #     state = states[i]
+    #     state_ind = state .+ 1
+    #     occ_bool = state .== 1
+    #     M_prime = sum(occ_bool)
+
+    #     parity_f = mod(sum(state[1:Nf]), 2)
+    #     parity_v = mod(sum(state[Nf+1:end]), 2)
+    Threads.@threads for state in states
+    # for state in states
+        f_occ, u_occ, r_occ, d_occ, l_occ = state
+
+        # convert occ to bitstrings
+        f = (digits(f_occ, base=2, pad=Nf))
+        u = (digits(u_occ, base=2, pad=Nv))
+        l = (digits(l_occ, base=2, pad=Nv))
+        d = (digits(d_occ, base=2, pad=Nv))
+        r = (digits(r_occ, base=2, pad=Nv))
+
+        # Boolean occupation vector to select rows from R_mat_full (true if occupied)
+        occ_bool = vcat(f, u, r, d, l) .== 1
         M_prime = sum(occ_bool)
 
-        parity_f = mod(sum(state[1:Nf]), 2)
-        parity_v = mod(sum(state[Nf+1:end]), 2)
+        parity_f = mod(sum(f), 2)
+        parity_v = mod(sum(l) + sum(u) + sum(r) + sum(d), 2)
 
         if mod(M_prime,2) != parity || parity_f != parity_v # skip if parity doesn't match
             continue
@@ -354,16 +387,24 @@ function translate_new2(X::AbstractMatrix, Nf::Int, Nv::Int)
             R_mat = R_mat_full[occ_bool,:]
             fsign = isodd((M_prime * (M_prime - 1)) ÷ 2) ? -1 : 1 # fermionic sign from reordering
             pf = pfaffian([zeros(M_prime,M_prime) R_mat; -transpose(R_mat) Q_mat])
-            T[state_ind...] = fsign * pf / v_prod
+            T[ind_f_dict[f], ind_v_dict[u], ind_v_dict[r], ind_v_dict[d], ind_v_dict[l]] = fsign * pf / v_prod
         else # all unoccupied
-            T[state_ind...] = pfaffian(Q_mat) / v_prod
+            T[1,1,1,1,1] = pfaffian(Q_mat) / v_prod
         end
     end
 
     fiducial_state = TensorMap(T, codomain_space ← domain_space)
     ω = virtual_bond_state(Nv)
 
-    return get_peps(ω, fiducial_state)
+    V = fermion_space()
+    fuser_virtual = isomorphism(Int, fuse(fill(V, Nv)...), reduce(⊗, fill(V, Nv)))
+    # The maximally entangled bond state ω is in the full tensor product basis of the two virtual fermions (Λ flavors).
+    # We now transform ω to to the explicit tensor product basis of |l> ⊗ |r> ( or |d> ⊗ |u> ).
+    ω = (fuser_virtual ⊗ fuser_virtual) * ω
+
+    @tensor A[-1; -2 -3 -4 -5] := conj(ω[1 -2]) * conj(ω[2 -3]) * fiducial_state[-1 1 2 -4 -5]
+    return PEPSKit.peps_normalize(InfinitePEPS(A; unitcell = (1, 1)))
+    # return get_peps(ω, fiducial_state)
 end
 
 function translate_occ_to_TM_dict(N)
