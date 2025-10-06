@@ -3,9 +3,8 @@ using Test
 using GfPEPS
 using JSON: parsefile
 
- @time X_opt, optim_energy, exact_energy = GfPEPS.get_X_opt();
+@time X_opt, optim_energy, exact_energy = GfPEPS.get_X_opt();
 
- 
 @testset "Energy BCS" begin
     @testset "d_wave" begin
         config = parsefile(joinpath(GfPEPS.test_config_path, "conf_test_BCS_d_wave.json"))

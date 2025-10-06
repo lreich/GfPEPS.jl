@@ -15,25 +15,19 @@ N = (Nf + 4*Nv)
 
 Γ_fiducial, X = GfPEPS.rand_CM(Nf,Nv)
 
-peps = GfPEPS.translate_naive(X, Nf, Nv)
-
-H = GfPEPS.get_parent_hamiltonian(Γ_fiducial, Nf, Nv)
-_, M = GfPEPS.bogoliubov(H)
-U,V = GfPEPS.get_bogoliubov_blocks(M)
-Z = V * inv(U)
-# @time test = GfPEPS.fiducial_state(Nf,Nv,Z);
+# peps = GfPEPS.translate_naive(X, Nf, Nv)
 pepsMy = GfPEPS.translate(X, Nf, Nv);
 
-Espace = Vect[FermionParity](0 => 4, 1 => 4)
-env = CTMRGEnv(randn, ComplexF64, peps, Espace)
-# env = CTMRGEnv(randn, ComplexF64, peps)
-for χenv in [8, 16, 32]
-    trscheme = truncdim(χenv)
-    env, = leading_boundary(
-        env, peps; tol = 1.0e-11, maxiter = 200, trscheme,
-        alg = :sequential, projector_alg = :fullinfinite
-    )
-end
+# Espace = Vect[FermionParity](0 => 4, 1 => 4)
+# env = CTMRGEnv(randn, ComplexF64, peps, Espace)
+# # env = CTMRGEnv(randn, ComplexF64, peps)
+# for χenv in [8, 16, 32]
+#     trscheme = truncdim(χenv)
+#     env, = leading_boundary(
+#         env, peps; tol = 1.0e-11, maxiter = 200, trscheme,
+#         alg = :sequential, projector_alg = :fullinfinite
+#     )
+# end
 
 Espace = Vect[FermionParity](0 => 4, 1 => 4)
 envMy = CTMRGEnv(randn, ComplexF64, pepsMy, Espace)
@@ -53,12 +47,12 @@ Lx = 128
 Ly = 128
 
 ham = GfPEPS.BCS_spin_hamiltonian(ComplexF64, InfiniteSquare(1, 1); t=t, Δ_0 = Δ_0, μ = μ)
-energy1 = real(expectation_value(peps, ham, env))
+# energy1 = real(expectation_value(peps, ham, env))
 energy2 = real(expectation_value(pepsMy, ham, envMy))
 
 bz = BrillouinZone2D(Lx, Ly, (:APBC, :PBC))
 energy3 = GfPEPS.energy_CM(Γ_fiducial, bz, Nf; t=t, mu=μ, Δ_0=Δ_0)
 
-@info "Energy per site (PEPS)" energy1
+# @info "Energy per site (PEPS)" energy1
 @info "Energy per site (PEPS My)" energy2
 @info "Energy per site (CM)" energy3
