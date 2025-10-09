@@ -19,6 +19,7 @@
     },
 
     "hamiltonian":{
+        "type": "BCS",
         "t": 1.0,
         "pairing_type": "p_ip_wave",
         "Δ_0": 1.0,

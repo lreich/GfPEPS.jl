@@ -117,13 +117,13 @@ augmented-Lagrangian controls (`density_tol`, `density_outer_iters`, `penalty_gr
 The function returns the optimized matrix `X`, the resulting energy, and the
 exact BCS energy for comparison.
 """
-function get_X_opt(Nf::Int, Nv::Int, t::Real, μ::Real, pairing_type::String, Δ_0::Real;
+function get_X_opt(Nf::Int, Nv::Int, params::Union{BCS,Kitaev};
     δ::Float64 = 0.0,
     solve_μ_from_δ::Bool = false,
     enforce_density::Bool = false,
     λ::Float64 = 1e2, # initial penalty parameter for hole density constraint
-    Lx::Int = 5, 
-    Ly::Int = 5,
+    Lx::Int = 6, 
+    Ly::Int = 6,
     bc::Tuple{Symbol, Symbol}=(:APBC, :PBC),
     parity::Int = 1, # 1 for even, -1 for odd
     maxiter::Int=500,
@@ -144,10 +144,11 @@ function get_X_opt(Nf::Int, Nv::Int, t::Real, μ::Real, pairing_type::String, Δ
 
     # construct Brillouin zone
     bz = BrillouinZone2D(Lx,Ly,bc)
-    has_dirac_points(bz,t,μ,pairing_type,Δ_0) # warn if dirac points are present
+    has_dirac_points(bz,params) # warn if dirac points are present
 
-    if(solve_μ_from_δ)
-        μ = solve_for_mu(bz,δ,t,pairing_type,Δ_0)
+    if solve_μ_from_δ && params isa BCS
+        μ = solve_for_mu(bz, δ, params.t, params.pairing_type, params.Δ_0)
+        params = BCS(params.t, μ, params.pairing_type, params.Δ_0)
     end
 
     # smaller system size for initial optimization to find better starting point
@@ -186,9 +187,9 @@ function get_X_opt(Nf::Int, Nv::Int, t::Real, μ::Real, pairing_type::String, Δ
         @info "Optimize X for: Lx = $(Lx_init), Ly = $(Ly_init)"
 
         bz_init = BrillouinZone2D(Lx_init, Ly_init, bc)
-        has_dirac_points(bz_init, t, μ, pairing_type, Δ_0)
+        has_dirac_points(bz_init, params)
 
-        loss_init_no_dens = optimize_loss(t, μ, bz_init, Nf, Nv, pairing_type, Δ_0)
+        loss_init_no_dens = optimize_loss(bz_init, Nf, Nv, params)
         doping_fn_init = X_mat -> doping_bcs(X_mat, bz_init, Nf, Nv)
 
         # Use the stage optimizer to refine the initial guess before scaling up.
@@ -213,7 +214,7 @@ function get_X_opt(Nf::Int, Nv::Int, t::Real, μ::Real, pairing_type::String, Δ
         end
     end
 
-    loss_no_dens = optimize_loss(t, μ, bz, Nf, Nv, pairing_type, Δ_0)
+    loss_no_dens = optimize_loss(bz, Nf, Nv, params)
     doping_fn = X_val -> doping_bcs(X_val, bz, Nf, Nv)
 
     @info "Finding optimal X for full system size..."
@@ -246,36 +247,54 @@ function get_X_opt(Nf::Int, Nv::Int, t::Real, μ::Real, pairing_type::String, Δ
         @warn "Final doping deviates from target by $(constraint_final). Consider increasing density_outer_iters or penalty_growth."
     end
 
-    exact_energy = exact_energy_BCS_k(bz,t,μ,pairing_type,Δ_0)
+    E_exact = exact_energy(params, bz)
     optim_energy = Optim.minimum(res_final)
-    deviation = abs(optim_energy - exact_energy)
+    deviation = abs(optim_energy - E_exact)
 
-    @info "Final energy summary" target=exact_energy achieved=optim_energy deviation=deviation
+    @info "Final energy summary" target=E_exact achieved=optim_energy deviation=deviation
 
-    return X_opt, optim_energy, exact_energy
+    return X_opt, optim_energy, E_exact
 end
 
-get_X_opt(;conf::Dict=parsefile(joinpath(GfPEPS.config_path, "conf_BCS_d_wave.json"))) = get_X_opt(
-    conf["params"]["N_physical_fermions_on_site"],
-    conf["params"]["N_virtual_fermions_on_bond"],
-    conf["hamiltonian"]["t"],
-    conf["hamiltonian"]["μ"],
-    conf["hamiltonian"]["pairing_type"],
-    conf["hamiltonian"]["Δ_0"];
-    δ = conf["hamiltonian"]["hole_density"],
-    solve_μ_from_δ = conf["hamiltonian"]["μ_from_hole_density"],
-    enforce_density = conf["hamiltonian"]["enforce_density"],
-    λ = conf["hamiltonian"]["lagrange_multiplier_density"],
-    Lx = conf["system_params"]["Lx"],
-    Ly = conf["system_params"]["Ly"],
-    bc = (Symbol(conf["system_params"]["x_bc"]), Symbol(conf["system_params"]["y_bc"])),
-    parity = conf["system_params"]["parity"],
-    maxiter = conf["params"]["maxiter"],
-    show_trace = conf["params"]["show_trace"],
-    grad_tol = conf["params"]["grad_tol"],
-    f_reltol = conf["params"]["f_reltol"],
-    seed = conf["params"]["seed"],
-    density_tol =  conf["hamiltonian"]["density_tol"],
-    density_outer_iters = conf["hamiltonian"]["density_outer_iters"],
-    penalty_growth = conf["hamiltonian"]["penalty_growth"]
-)
+function get_X_opt(;conf::Dict=parsefile(joinpath(GfPEPS.config_path, "conf_BCS_d_wave.json"))) 
+    params = begin
+        if conf["hamiltonian"]["type"] == "BCS"
+            BCS(
+                conf["hamiltonian"]["t"],
+                conf["hamiltonian"]["μ"],
+                conf["hamiltonian"]["pairing_type"],
+                conf["hamiltonian"]["Δ_0"]
+            )
+        elseif conf["hamiltonian"]["type"] == "Kitaev"
+            Kitaev(
+                conf["hamiltonian"]["Jx"],
+                conf["hamiltonian"]["Jy"],
+                conf["hamiltonian"]["Jz"]
+            )
+        else
+            error("Unknown Hamiltonian type: $(conf["hamiltonian"]["type"])")
+        end
+    end
+    
+    return get_X_opt(
+        conf["params"]["N_physical_fermions_on_site"],
+        conf["params"]["N_virtual_fermions_on_bond"],
+        params;
+        δ = conf["hamiltonian"]["hole_density"],
+        solve_μ_from_δ = conf["hamiltonian"]["μ_from_hole_density"],
+        enforce_density = conf["hamiltonian"]["enforce_density"],
+        λ = conf["hamiltonian"]["lagrange_multiplier_density"],
+        Lx = conf["system_params"]["Lx"],
+        Ly = conf["system_params"]["Ly"],
+        bc = (Symbol(conf["system_params"]["x_bc"]), Symbol(conf["system_params"]["y_bc"])),
+        parity = conf["system_params"]["parity"],
+        maxiter = conf["params"]["maxiter"],
+        show_trace = conf["params"]["show_trace"],
+        grad_tol = conf["params"]["grad_tol"],
+        f_reltol = conf["params"]["f_reltol"],
+        seed = conf["params"]["seed"],
+        density_tol =  conf["hamiltonian"]["density_tol"],
+        density_outer_iters = conf["hamiltonian"]["density_outer_iters"],
+        penalty_growth = conf["hamiltonian"]["penalty_growth"]
+    )
+end

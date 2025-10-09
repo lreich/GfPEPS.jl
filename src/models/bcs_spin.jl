@@ -54,7 +54,8 @@ Returns:
     -2t * (cos(k_x) + cos(k_y)) - μ
 ```
 """
-ξ(k::AbstractVector{<:Real},t::Real,μ::Real) = -2t * (cos(k[1]) + cos(k[2])) - μ
+# ξ(k::AbstractVector{<:Real},t::Real,μ::Real) = -2t * (cos(k[1]) + cos(k[2])) - μ
+ξ(k::AbstractVector{<:Real}, params::BCS) = -2 * params.t * (cos(k[1]) + cos(k[2])) - params.μ
 
 """
     Δ(pairing_type::String, kwargs...)
@@ -64,23 +65,26 @@ Returns pairing amplitude:
     ● d_wave: 2*Δ_0*(cos(k_x) - cos(k_y))
     ● s_wave: 2*Δ_0
     ● p+ip_wave: 2*Δ_0*(sin(k_x) - im*sin(k_y))
+    ● kitaev_vortex_free: J*(e^{ik_x} + e^{ik_y})
 ```
 """
-function Δ(pairing_type::String, kwargs...)
-    if pairing_type == "d_wave"
-        return Δ(Val(:d_wave), kwargs...)
-    elseif pairing_type == "s_wave"
-        return Δ(Val(:s_wave), kwargs...)
-    elseif pairing_type == "p_ip_wave"
-        return Δ(Val(:p_ip_wave), kwargs...)
+function Δ(k::AbstractVector{<:Real}, params::BCS)
+    if params.pairing_type == "d_wave"
+        return Δ(Val(:d_wave), k, params.Δ_0)
+    elseif params.pairing_type == "s_wave"
+        return Δ(Val(:s_wave), k, params.Δ_0)
+    elseif params.pairing_type == "p_ip_wave"
+        return Δ(Val(:p_ip_wave), k, params.Δ_0)
+    else
+        throw(ArgumentError("Unsupported pairing_type $(params.pairing_type) for BCS parameters"))
     end
 end
 
 Δ(::Val{:d_wave},k::AbstractVector{<:Real},Δ_0) = 2*Δ_0*(cos(k[1]) - cos(k[2]))
 Δ(::Val{:s_wave},k::AbstractVector{<:Real},Δ_0::Real) = 2*Δ_0
 Δ(::Val{:p_ip_wave},k::AbstractVector{<:Real},Δ_0::Real) = 2*Δ_0*(sin(k[1]) + im*sin(k[2]))
-function E(k::AbstractVector{<:Real},t::Real,μ::Real,pairing_type::String,Δ_0::Real) 
-    return sqrt(ξ(k,t,μ)^2 + abs(Δ(pairing_type, k, Δ_0))^2)
+function E(k::AbstractVector{<:Real}, params::BCS)
+    return sqrt(ξ(k, params)^2 + abs(Δ(k, params))^2)
 end
 
 """
@@ -88,21 +92,41 @@ end
 
 Returns the exact ground state energy per site of a BCS mean field Hamiltonian over the Brillouin zone `bz`.
 """
-function exact_energy_BCS_k(bz::BrillouinZone2D, t::Real, μ::Real, pairing_type::String, Δ_0::Real) 
+function exact_energy(params::BCS, bz::BrillouinZone2D)
     return mean(map(eachcol(bz.kvals)) do k
-        ξ(k,t,μ) - E(k, t, μ, pairing_type, Δ_0)
+        ξ(k,params) - E(k, params)
     end)
 end
+
+# function exact_energy_BCS_k(bz::BrillouinZone2D, t::Real, μ::Real, pairing_type::String, Δ_0::Real) 
+#     if pairing_type == "kitaev_vortex_free"
+#         # Interpret Δ_0 as J (Jx=Jy=J), and μ = -2 Jz  => Jz = -μ/2
+#         J = Δ_0
+#         Jx = J; Jy = J; Jz = -μ/2
+
+#         # Majorana band energy per unit cell: E_M(k) = 2 * |g(k)|
+#         e_uc = -mean(map(eachcol(bz.kvals)) do k
+#             2 * abs(g_kitaev(k; Jx=Jx, Jy=Jy, Jz=Jz))
+#         end)
+
+#         # return per site (honeycomb has 2 sites per unit cell)
+#         return e_uc / 2
+#     else
+#         return mean(map(eachcol(bz.kvals)) do k
+#             ξ(k,t,μ) - E(k, t, μ, pairing_type, Δ_0)
+#         end)
+#     end
+# end
 
 """
     has_dirac_points(bz::BrillouinZone2D, t::Real, μ::Real, pairing_type::String, Δ_kwargs...)
 
 Checks if there are Dirac points (zero-energy modes) in the energy spectrum over the Brillouin zone `bz`.
 """
-function has_dirac_points(bz::BrillouinZone2D, t::Real, μ::Real, pairing_type::String, Δ_0::Real)
+function has_dirac_points(bz::BrillouinZone2D, params::BCS)
     dirac_point_found = false
     for k in eachcol(bz.kvals)
-        if isapprox(E(k,t,μ,pairing_type,Δ_0), 0.0; atol = 1e-6)
+        if isapprox(E(k, params), 0.0; atol = 1e-6)
             @warn ("Dirac point found at k = $k. This may lead to convergence issues during optimization.")
             dirac_point_found = true
         end
@@ -114,10 +138,7 @@ end
 The energy of a Gaussian fPEPS evaluated from 
 the fiducial state correlation matrix `G`.
 """
-function energy_CM(
-        Γ_fiducial::AbstractMatrix, bz::BrillouinZone2D, Nf::Int;
-        t::Float64 = 1.0, pairing_type::String = "d_wave", Δ_0::Float64 = 0.5, mu::Float64 = 0.0
-    )
+function energy_CM(Γ_fiducial::AbstractMatrix, bz::BrillouinZone2D, Nf::Int, params::BCS)
     A = Γ_fiducial[1:2*Nf, 1:2*Nf]
     B = Γ_fiducial[1:2*Nf, 2*Nf+1:end]
     D = Γ_fiducial[2*Nf+1:end, 2*Nf+1:end]
@@ -128,9 +149,13 @@ function energy_CM(
             G_in = G_in_single_k(k, χ)
             Gf = A + B * inv(D + G_in) * transpose(B)
             # qq ordering of Majorana modes: (c_1, c_2, ..., c_(2(4Nv + Nf)))
+            # return real(
+            #     ξ(k,t,mu) * (2 - Gf[1, 2] - Gf[3, 4]) / 2 +
+            #         Δ(pairing_type, k, Δ_0) * (Gf[1, 4] + Gf[2, 3] + 1.0im * (Gf[2, 4] - Gf[1, 3])) / 2 
+            # )
             return real(
-                ξ(k,t,mu) * (2 - Gf[1, 2] - Gf[3, 4]) / 2 +
-                    Δ(pairing_type, k, Δ_0) * (Gf[1, 4] + Gf[2, 3] + 1.0im * (Gf[2, 4] - Gf[1, 3])) / 2 
+                ξ(k, params) * (2 - Gf[1, 2] - Gf[3, 4]) / 2 +
+                    Δ(k, params) * (Gf[1, 4] + Gf[2, 3] + 1.0im * (Gf[2, 4] - Gf[1, 3])) / 2
             )
         end
     )
@@ -167,8 +192,10 @@ end
 Functions to solve μ from hole density
 ======================================================================================#
 function exact_doping(bz::BrillouinZone2D, t::Real, μ::Real, pairing_type::String, Δ_0::Real)
+    bcs_params = BCS(t, μ, pairing_type, Δ_0)
+
     return mean(map(eachcol(bz.kvals)) do k
-        ξ(k,t,μ) / E(k, t, μ, pairing_type, Δ_0)
+        ξ(k,bcs_params) / E(k, bcs_params)
     end)
 end
 
