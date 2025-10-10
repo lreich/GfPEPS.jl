@@ -1,4 +1,47 @@
 """
+Kitaev Hamiltonian mapped to Dirac fermions on a square lattice
+```
+    H = K ∑_{i,α} u_i,i+α (f†_{i} f_{i+α} + f†_{i} f†_{i+α}  + h.c.) + K ∑_i (2f†_{i} f_{i}-1)
+```
+where α=̂x, ̂y and u_i,i+α = ±1 are Z2 gauge fields.
+
+"""
+function Kitaev_hamiltonian(
+        T::Type{<:Number}, lattice::InfiniteSquare; gauge_field::String="vortex_free", Jx::Real = 1.0,
+        Jy::Real = 1.0, Jz::Real = 1.0
+    )
+    if gauge_field == "vortex_free"
+
+
+    else
+        @error("Only vortex_free gauge field is implemented.")
+    end
+
+    # Δx = Δ_0
+    # if pairing_type == "s_wave"
+    #     Δy = Δx
+    # elseif pairing_type == "d_wave"
+    #     Δy = -Δx
+    # end
+
+    # pspace = hub.hubbard_space(Trivial, Trivial)
+    # pspaces = fill(pspace, (lattice.Nrows, lattice.Ncols))
+    # num = hub.e_num(T, Trivial, Trivial)
+    # unit = TensorKit.id(T, pspace)
+    # hopping = (-t) * hub.e_hopping(T, Trivial, Trivial) -
+    #     (μ / 4) * (num ⊗ unit + unit ⊗ num)
+    # pairing = sqrt(2) * hub.singlet_plus(T, Trivial, Trivial)
+    # pairing += pairing'
+    # return LocalOperator(
+    #     pspaces,
+    #     map(nearest_neighbours(lattice)) do bond
+    #         return bond => hopping + pairing * (_is_xbond(bond) ? Δx : Δy)
+    #     end...
+    # )
+end
+Kitaev_hamiltonian(lattice; gauge_field="vortex_free", Jx=1.0, Jy=1.0, Jz=1.0) = Kitaev_hamiltonian(ComplexF64, lattice; gauge_field=gauge_field, Jx=Jx, Jy=Jy, Jz=Jz)
+
+"""
     ξ(k::AbstractVector{<:Real}, params::Kitaev)
 
 (Vortex free configuration)
@@ -11,7 +54,7 @@ Returns:
 ξ(k::AbstractVector{<:Real}, params::Kitaev) = 2 * (params.Jz + params.Jx * cos(k[1]) + params.Jy * cos(k[2]))
 
 Δ(k::AbstractVector{<:Real}, params::Kitaev) = 2 * (params.Jx * sin(k[1]) + params.Jy * sin(k[2]))
-# Δ(k::AbstractVector{<:Real}, params::Kitaev) = params.Jx*cis(k[1]) + params.Jy*cis(k[2])
+# Δ(k::AbstractVector{<:Real}, params::Kitaev) = 2*(params.Jx*cis(k[1]) + params.Jy*cis(k[2]))
 
 function E(k::AbstractVector{<:Real}, params::Kitaev)
     return sqrt(ξ(k, params)^2 + abs(Δ(k, params))^2)
