@@ -16,7 +16,7 @@ params_Kitaev = GfPEPS.Kitaev(
 
 bz = GfPEPS.BrillouinZone2D(config["system_params"]["Lx"], config["system_params"]["Ly"], (:PBC, :APBC))
 
-exact_energy(params_Kitaev, bz)
+GfPEPS.exact_energy(params_Kitaev, bz)
 
 # @testset "Energy Kitaev HC (vortex free)" begin
 #         config = parsefile(joinpath(GfPEPS.test_config_path, "conf_test_kitaev.json"))
