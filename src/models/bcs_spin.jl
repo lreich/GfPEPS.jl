@@ -244,3 +244,26 @@ function doping_peps(peps::InfinitePEPS, env::CTMRGEnv)
     O = LocalOperator(lattice, ((1, 1),) => hub.e_num(Trivial, Trivial))
     return 1 - real(expectation_value(peps, O, env))
 end
+
+# Number operator in Gutzwiller projected space
+function e_num_GW(V)
+    t = zeros(T, V ← V)
+    I = sectortype(t)
+    t[(I(1), I(1))][1, 1] = 1
+    t[(I(1), I(1))][2, 2] = 1
+    return t
+end
+
+"""
+    doping_pepsGW(peps::InfinitePEPS, env::CTMRGEnv)
+
+The average doping `δ = 1 - (1/N) ∑_i ⟨f†_{iσ} f_{iσ}⟩`
+evaluated from the Gutzwiller projected GfPEPS tensor.
+"""
+function doping_pepsGW(peps::InfinitePEPS, env::CTMRGEnv)
+    V = Vect[FermionParity](0 => 1, 1 => 2)
+
+    lattice = collect(space(t, 1) for t in peps.A)
+    O = LocalOperator(lattice, ((1, 1),) => e_num_GW(V))
+    return 1 - real(expectation_value(peps, O, env))
+end
