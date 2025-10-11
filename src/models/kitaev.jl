@@ -11,7 +11,7 @@ function Kitaev_hamiltonian(
         Jy::Real = 1.0, Jz::Real = 1.0
     )
     if gauge_field == "vortex_free"
-
+        
 
     else
         @error("Only vortex_free gauge field is implemented.")

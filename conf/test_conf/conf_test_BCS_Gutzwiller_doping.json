@@ -10,8 +10,8 @@
     },
 
     "system_params":{
-        "Lx": 100,
-        "Ly": 100,
+        "Lx": 24,
+        "Ly": 24,
         "x_bc": "PBC",
         "y_bc": "APBC",
         "lattice_type": "square",
@@ -34,7 +34,7 @@
     },
 
     "PEPSKit": {
-        "χ_env_max": 20,
+        "χ_env_max": 40,
         "tol": 1e-8,
         "maxiter": 500
     },

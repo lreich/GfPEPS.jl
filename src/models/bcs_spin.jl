@@ -180,8 +180,12 @@ end
 """
     doping_bcs(Γ::AbstractMatrix, bz::BrillouinZone, Nf::Int)
 
-The average doping `δ = 1 - (1/N) ∑_i ⟨f†_{iσ} f_{iσ}⟩`
+The average doping `δ = 1 - (1/N) ∑_k ⟨f†_{kσ} f_{kσ}⟩`
 evaluated from the fiducial state correlation matrix `Γ`.
+
+Note:   `⟨f†_{k↑} f_{k↑}⟩ = 1/2 * (1 - Gf[1,2])`
+        `⟨f†_{k↓} f_{k↓}⟩ = 1/2 * (1 - Gf[3,4])`
+
 """
 function doping_bcs(Γ::AbstractMatrix, bz::BrillouinZone2D, Nf::Int)
     A, B, D = get_Γ_blocks(Γ, Nf)
