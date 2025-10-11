@@ -6,40 +6,50 @@ Kitaev Hamiltonian mapped to Dirac fermions on a square lattice
 where α=̂x, ̂y and u_i,i+α = ±1 are Z2 gauge fields.
 
 """
-function Kitaev_hamiltonian(
-        T::Type{<:Number}, lattice::InfiniteSquare; gauge_field::String="vortex_free", Jx::Real = 1.0,
-        Jy::Real = 1.0, Jz::Real = 1.0
-    )
-    if gauge_field == "vortex_free"
+# function Kitaev_hamiltonian(
+#         T::Type{<:Number}, lattice::InfiniteSquare; gauge_field::String="vortex_free", Jx::Real = 1.0,
+#         Jy::Real = 1.0, Jz::Real = 1.0
+#     )
+#     if gauge_field == "vortex_free"
+#         pspace = FO.FermionSpace()
+#         pspaces = fill(pspace, (lattice.Nrows, lattice.Ncols))
+
+#         num = FO.f_num(T, Trivial, Trivial)
+#         unit = TensorKit.id(T, pspace)
         
+#         hopping = Jx * FO.f_hopping(T) + Jx * (2*num  - unit)
+#         pairing = sqrt(2) * hub.singlet_plus(T, Trivial, Trivial)
+#         pairing += pairing'
 
-    else
-        @error("Only vortex_free gauge field is implemented.")
-    end
+#     else
+#         @error("Only vortex_free gauge field is implemented.")
+#     end
 
-    # Δx = Δ_0
-    # if pairing_type == "s_wave"
-    #     Δy = Δx
-    # elseif pairing_type == "d_wave"
-    #     Δy = -Δx
-    # end
+#     # Δx = Δ_0
+#     # if pairing_type == "s_wave"
+#     #     Δy = Δx
+#     # elseif pairing_type == "d_wave"
+#     #     Δy = -Δx
+#     # end
 
-    # pspace = hub.hubbard_space(Trivial, Trivial)
-    # pspaces = fill(pspace, (lattice.Nrows, lattice.Ncols))
-    # num = hub.e_num(T, Trivial, Trivial)
-    # unit = TensorKit.id(T, pspace)
-    # hopping = (-t) * hub.e_hopping(T, Trivial, Trivial) -
-    #     (μ / 4) * (num ⊗ unit + unit ⊗ num)
-    # pairing = sqrt(2) * hub.singlet_plus(T, Trivial, Trivial)
-    # pairing += pairing'
-    # return LocalOperator(
-    #     pspaces,
-    #     map(nearest_neighbours(lattice)) do bond
-    #         return bond => hopping + pairing * (_is_xbond(bond) ? Δx : Δy)
-    #     end...
-    # )
-end
-Kitaev_hamiltonian(lattice; gauge_field="vortex_free", Jx=1.0, Jy=1.0, Jz=1.0) = Kitaev_hamiltonian(ComplexF64, lattice; gauge_field=gauge_field, Jx=Jx, Jy=Jy, Jz=Jz)
+#     # pspace = hub.hubbard_space(Trivial, Trivial)
+#     # pspaces = fill(pspace, (lattice.Nrows, lattice.Ncols))
+#     # num = hub.e_num(T, Trivial, Trivial)
+#     # unit = TensorKit.id(T, pspace)
+#     # hopping = (-t) * hub.e_hopping(T, Trivial, Trivial) -
+#     #     (μ / 4) * (num ⊗ unit + unit ⊗ num)
+#     # pairing = sqrt(2) * hub.singlet_plus(T, Trivial, Trivial)
+#     # pairing += pairing'
+#     # return LocalOperator(
+#     #     pspaces,
+#     #     map(nearest_neighbours(lattice)) do bond
+#     #         return bond => hopping + pairing * (_is_xbond(bond) ? Δx : Δy)
+#     #     end...
+#     # )
+# end
+# Kitaev_hamiltonian(lattice; gauge_field="vortex_free", Jx=1.0, Jy=1.0, Jz=1.0) = Kitaev_hamiltonian(ComplexF64, lattice; gauge_field=gauge_field, Jx=Jx, Jy=Jy, Jz=Jz)
+
+
 
 """
     ξ(k::AbstractVector{<:Real}, params::Kitaev)
