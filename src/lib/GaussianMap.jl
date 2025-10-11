@@ -17,7 +17,7 @@ function helper(k::Real)
     #         -conj(cis(k))*σ_x zeros(2,2)] # (rldu) Hong hao paper convention (qq-ordering, l_1,r_1...l_Nv,r_Nv,u_1,d_1...u_Nv,d_Nv)
 
     return [zeros(2,2) -conj(cis(k))*σ_x;
-            cis(k)*σ_x zeros(2,2)] # Hackenbroich 2010 (lrud)
+            cis(k)*σ_x zeros(2,2)] # Hackenbroich 2010 (lrud) (lrdu)
 end
 
 """
@@ -126,31 +126,6 @@ function GaussianMap(A::AbstractMatrix, B::AbstractMatrix, D::AbstractMatrix, CM
     # return cat(mats...; dims=3) |> x -> permutedims(x, (3,1,2))
     return permutedims(stack(mats, dims=3), (3,1,2))
 end
-
-# function GaussianMap(A::AbstractMatrix, B::AbstractMatrix, D::AbstractMatrix, CM_in::AbstractArray)
-#     # get block matrices from CM_out (=Γ_fiducial)
-#     # A = CM_out[1:2*Nf, 1:2*Nf]
-#     # B = CM_out[1:2*Nf, 2*Nf+1:end]
-#     # D = CM_out[2*Nf+1:end, 2*Nf+1:end]
-#     Bt = transpose(B)
-
-#     # Gaussian map for each (kx,ky)
-#     # mats = map(s -> B * ((D .- s) \ transpose(B)) .+ A, eachslice(CM_in; dims=1)) # Kraus thesis
-#     return map(s -> B * ((D .+ s) \ Bt) .+ A, eachslice(CM_in; dims=1)) # Hong hao paper
-# end
-
-# function GaussianMap(A::AbstractMatrix, B::AbstractMatrix, D::AbstractMatrix, CM_in::AbstractArray)
-#     Nkvals = size(CM_in, 1)
-#     N = size(A, 1)
-#     Bt = transpose(B)
-#     outbuf = Zygote.Buffer(Array{eltype(CM_in)}(undef, Nkvals, N, N), Nkvals, N, N)
-#     @inbounds @views for k = 1:Nkvals
-#         # (D + s) \ Bt  ⇒ solve once, then multiply on left by B
-#         outbuf[k, :, :] = B * ((D .+ CM_in[k, :, :]) \ Bt) .+ A
-#     end
-#     return copy(outbuf) # copy(Buffer()) returns a normal array
-# end
-
 
 function GaussianMap_single_k(A::AbstractMatrix, B::AbstractMatrix, D::AbstractMatrix, CM_in::AbstractMatrix)
     return B * ((D + CM_in) \ transpose(B)) .+ A

@@ -99,9 +99,9 @@ The output complex fermion order will be
 function fiducial_state(T::Type{<:Number}, Nf::Int, Nv::Int, Z::AbstractMatrix)
     ψ = paired_state(T, Z)
     # reorder virtual fermions (TensorKit automaticially handles fermionic signs)
-    perm = vcat(1:2:(2Nv), 2:2:(2Nv))
-    perm = Tuple(vcat(1:Nf, perm .+ Nf, perm .+ (Nf + 2Nv)))
-    ψ = TensorKit.permute(ψ, (perm, ()))
+    # perm = vcat(1:2:(2Nv), 2:2:(2Nv))
+    # perm = Tuple(vcat(1:Nf, perm .+ Nf, perm .+ (Nf + 2Nv)))
+    # ψ = TensorKit.permute(ψ, (perm, ()))
     return ψ
 end
 fiducial_state(Nf::Int, Nv::Int, Z::AbstractMatrix) = fiducial_state(ComplexF64, Nf, Nv, Z)

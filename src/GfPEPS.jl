@@ -5,10 +5,8 @@ using MKL
 using LinearAlgebra
 using Statistics
 using BlockDiagonals
-# using ITensors, ITensorMPS
 using Optim
 using Zygote
-# using Enzyme
 using JSON: parsefile
 using Random
 using TensorOperations
@@ -31,6 +29,7 @@ const unit = TensorKit.id(V)
 #= include local files =#
 include("lib/utils.jl")
 include("lib/brillouinZone.jl")
+include("lib/modelParameters.jl")
 include("lib/GaussianMap.jl")
 include("lib/constructor.jl")
 include("lib/loss.jl")
@@ -40,6 +39,7 @@ include("lib/bogoliubov.jl")
 include("lib/Xopt.jl")
 
 include("models/bcs_spin.jl")
+include("models/kitaev.jl")
 
 include("exports.jl") # export functions
 

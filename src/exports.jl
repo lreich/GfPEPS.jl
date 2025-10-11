@@ -19,6 +19,10 @@ export translate
 #= export constructors =#
 export Gaussian_fPEPS
 
+#= export models =#
+export BCS
+export Kitaev
+
 #= export global variables =#
 const root = normpath(joinpath(@__DIR__, ".."))
 const config_path = joinpath(root, "conf")

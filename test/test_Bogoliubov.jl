@@ -10,7 +10,7 @@ Nv = 2
 N = (Nf + 4*Nv)
 
 Γ,_ = GfPEPS.rand_CM(Nf, Nv)
-H = GfPEPS.get_parent_hamiltonian(Γ)
+H = GfPEPS.get_parent_hamiltonian(Γ, Nf, Nv)
 _, M = GfPEPS.bogoliubov(H)
 
 @testset "Bogoliubov transformation" begin

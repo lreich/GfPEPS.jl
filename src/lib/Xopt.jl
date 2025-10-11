@@ -1,98 +1,300 @@
-function get_X_opt(Nf::Int, Nv::Int, t::Real, μ::Real, pairing_type::String, Δ_0::Real;
+const DEFAULT_PENALTY_FALLBACK = 1.0
+
+"""
+        optimize_stage_with_density(loss_energy, doping_fn, X_init; kwargs...)
+
+Run one optimization stage on the Stiefel manifold using an augmented Lagrangian
+to simultaneously minimize the energy (given by `loss_energy`) and enforce a
+target hole density. When `enforce_density` is false the routine solves the
+unconstrained problem to obtain the best energy-only optimum.
+
+Arguments
+---------
+- `loss_energy`: Scalar-valued objective returning the mean energy for a given `X`.
+- `doping_fn`: Callback that reports the hole density associated with `X`.
+- `X_init`: Starting point for the manifold optimizer.
+- `δ`: Desired hole density.
+- `λ`: Initial penalty parameter for the augmented Lagrangian.
+- `density_tol`: Acceptable absolute tolerance on the density constraint.
+- `penalty_growth`: Factor controlling how aggressively the penalty grows when
+    the constraint is violated.
+- `outer_iters`: Number of outer augmented-Lagrangian updates.
+- `enforce_density`: Toggle to switch between constrained and unconstrained modes.
+
+Returns the optimized `X`, the `Optim` result struct, and the final hole density.
+"""
+function optimize_stage_with_density(loss_energy::Function, doping_fn::Function, X_init::AbstractMatrix;
+    δ::Float64,
+    λ::Real,
+    grad_tol::Float64,
+    f_reltol::Float64,
+    maxiter::Int,
+    show_trace::Bool,
+    stage_label::AbstractString,
+    density_tol::Float64,
+    penalty_growth::Float64,
+    outer_iters::Int,
+    enforce_density::Bool)
+
+    if !enforce_density
+        # No constraint: minimize the pure energy objective on the Stiefel manifold.
+        grad_energy(x) = first(Zygote.gradient(loss_energy, x))
+        grad_energy!(G, x) = copyto!(G, grad_energy(x))
+        res = Optim.optimize(loss_energy, grad_energy!, X_init, Optim.BFGS(; manifold=Optim.Stiefel()), Optim.Options(
+            iterations = maxiter,
+            g_tol = grad_tol,
+            show_trace = show_trace,
+            successive_f_tol = 10,
+            f_reltol = f_reltol
+        ))
+        X_opt = Optim.minimizer(res)
+        last_doping = doping_fn(X_opt)
+        @info "$(stage_label): unconstrained optimization" doping=last_doping energy=loss_energy(X_opt)
+        return X_opt, res, last_doping
+    end
+
+    # Set up augmented-Lagrangian variables.
+    η = 0.0
+    ρ = (λ isa Real && λ > 0) ? float(λ) : DEFAULT_PENALTY_FALLBACK
+    if !isfinite(ρ) || ρ <= 0
+        ρ = DEFAULT_PENALTY_FALLBACK
+    end
+
+    X_current = X_init
+    last_res = nothing
+    last_doping = doping_fn(X_current)
+
+    for outer_iter in 1:max(outer_iters, 1)
+        η_local = η
+        ρ_local = ρ
+
+        loss_augmented(x) = begin
+            dens = doping_fn(x)
+            constraint = dens - δ
+            return loss_energy(x) + η_local * constraint + 0.5 * ρ_local * constraint^2
+        end
+        grad_aug(x) = first(Zygote.gradient(loss_augmented, x))
+        grad_aug!(G, x) = copyto!(G, grad_aug(x))
+
+        res = Optim.optimize(loss_augmented, grad_aug!, X_current, Optim.BFGS(; manifold=Optim.Stiefel()), Optim.Options(
+            iterations = maxiter,
+            g_tol = grad_tol,
+            show_trace = show_trace,
+            successive_f_tol = 10,
+            f_reltol = f_reltol
+        ))
+
+        last_res = res
+        X_current = Optim.minimizer(res)
+        last_doping = doping_fn(X_current)
+        constraint = last_doping - δ
+
+        if abs(constraint) <= density_tol
+            ρ = ρ_local
+            break
+        end
+
+        η = η_local + ρ_local * constraint
+        ρ = max(ρ_local * penalty_growth, DEFAULT_PENALTY_FALLBACK)
+    end
+
+    last_res === nothing && error("Augmented Lagrangian did not run for stage $(stage_label).")
+
+    return X_current, last_res, last_doping
+end
+
+"""
+    get_X_opt(Nf, Nv, t, μ, pairing_type, Δ_0; kwargs...)
+
+Optimize the fiducial correlation matrix parameterized by an orthogonal matrix `X`
+so that the resulting Gaussian state minimizes the mean energy density for the
+specified BCS Hamiltonian. When a non-zero target hole density `δ` is provided,
+the routine enforces it via an augmented Lagrangian across a hierarchy of system
+sizes before tackling the full lattice.
+
+Keyword arguments include lattice dimensions, optimization tolerances, and
+augmented-Lagrangian controls (`density_tol`, `density_outer_iters`, `penalty_growth`).
+The function returns the optimized matrix `X`, the resulting energy, and the
+exact BCS energy for comparison.
+"""
+function get_X_opt(Nf::Int, Nv::Int, params::Union{BCS,Kitaev};
     δ::Float64 = 0.0,
     solve_μ_from_δ::Bool = false,
-    λ::Float64 = 1e2, # lagrange multiplier for hole density
-    Lx::Int = 5, 
-    Ly::Int = 5,
+    enforce_density::Bool = false,
+    λ::Float64 = 1e2, # initial penalty parameter for hole density constraint
+    Lx::Int = 6, 
+    Ly::Int = 6,
     bc::Tuple{Symbol, Symbol}=(:APBC, :PBC),
     parity::Int = 1, # 1 for even, -1 for odd
     maxiter::Int=500,
+    show_trace::Bool=false,
     grad_tol::Float64=1.0e-8,
     f_reltol::Float64=1.0e-10,
-    verbose::Bool=true,
-    seed::Int=1234)
+    seed::Int=1234,
+    density_tol::Float64=1.0e-6,
+    density_outer_iters::Int=8,
+    penalty_growth::Float64=10.0)
+
+    MKL.set_num_threads(Sys.CPU_THREADS) 
 
     Random.seed!(seed)
-
-    # construct Brillouin zone
-    bz = BrillouinZone2D(Lx,Ly,bc)
-    has_dirac_points(bz,t,μ,pairing_type,Δ_0) # warn if dirac points are present
-    Lx_init = isodd(Lx) ? 5 : 6
-    Ly_init = isodd(Ly) ? 5 : 6
-    bz_init = BrillouinZone2D(Lx_init,Ly_init,bc)
-    has_dirac_points(bz_init,t,μ,pairing_type,Δ_0) # warn if dirac points are present
 
     # initial ortogonal matrix X to construct Γ_out with correct parity sector (even)
     _, X = rand_CM(Nf,Nv; parity=parity)
 
-    if(solve_μ_from_δ)
-        μ = solve_for_mu(bz,δ,t,pairing_type,Δ_0)
+    # construct Brillouin zone
+    bz = BrillouinZone2D(Lx,Ly,bc)
+    has_dirac_points(bz,params) # warn if dirac points are present
+
+    if solve_μ_from_δ && params isa BCS
+        μ = solve_for_mu(bz, δ, params.t, params.pairing_type, params.Δ_0)
+        params = BCS(params.t, μ, params.pairing_type, params.Δ_0)
     end
 
-    # build loss function
-    loss_init_no_dens = optimize_loss(t, μ, bz_init, Nf, Nv, pairing_type, Δ_0)
-    loss_no_dens = optimize_loss(t, μ, bz, Nf, Nv, pairing_type, Δ_0)
+    # smaller system size for initial optimization to find better starting point
+    Lx_inits = [isodd(Lx) ? 5 : 6]
+    Ly_inits = [isodd(Ly) ? 5 : 6]
 
-    # augmented loss that penalizes deviation from target hole density δ
-    loss_init_dens(X) = begin
-        return loss_init_no_dens(X) + λ * (doping_bcs(X, bz_init, Nf, Nv) - δ)^2
+    while 2*Lx_inits[end] < Lx
+        if isodd(Lx_inits[end])
+            push!(Lx_inits, Lx_inits[end]*2 - 1)
+        else
+            push!(Lx_inits, Lx_inits[end] * 2)
+        end
     end
-    loss_dens(X) = begin
-        return loss_no_dens(X) + λ * (doping_bcs(X, bz, Nf, Nv) - δ)^2
+    while 2*Ly_inits[end] < Ly
+        if isodd(Ly_inits[end])
+            push!(Ly_inits, Ly_inits[end]*2 - 1)
+        else
+            push!(Ly_inits, Ly_inits[end] * 2)
+        end
     end
-    loss_init = δ!=0 ? loss_init_dens : loss_init_no_dens
-    loss = δ!=0 ? loss_dens : loss_no_dens
 
-    # build gradients
-    g_init(x) = first(Zygote.gradient(loss_init, x))
-    g_init!(G,x) = copyto!(G, g_init(x)) # better for optim
-    g(x) = first(Zygote.gradient(loss, x))
-    g!(G,x) = copyto!(G, g(x)) # better for optim
+    if enforce_density
+        @info "Target hole density δ = $(δ) will be enforced with tolerance $(density_tol)."
+    end
 
-    # First, find a better initial guess for X by solving for smaller system sizes (see: 10.1103/PhysRevLett.129.206401) 
-    @info "Finding better initial guess for X by solving smaller system sizes..."
-    res_init = Optim.optimize(loss_init, g_init!, X, Optim.LBFGS(;m=20,manifold=Optim.Stiefel()), Optim.Options(
-        iterations = maxiter,
-        g_tol = grad_tol,
-        show_trace = verbose,
-        successive_f_tol = 10,
-        f_reltol = f_reltol
-    ))
+    if !isempty(Lx_inits)
+       @info "Finding better initial guess for X by solving smaller system sizes..."
+    end
+
+    warmup_sizes = collect(zip(Lx_inits, Ly_inits))
+    warmup_iterations = 1000
+
+    for (stage_idx, (Lx_init, Ly_init)) in enumerate(warmup_sizes)
+
+        stage_label = "Warmup stage $(stage_idx) (Lx=$(Lx_init), Ly=$(Ly_init))"
+        @info "Optimize X for: Lx = $(Lx_init), Ly = $(Ly_init)"
+
+        bz_init = BrillouinZone2D(Lx_init, Ly_init, bc)
+        has_dirac_points(bz_init, params)
+
+        loss_init_no_dens = optimize_loss(bz_init, Nf, Nv, params)
+        doping_fn_init = X_mat -> doping_bcs(X_mat, bz_init, Nf, Nv)
+
+        # Use the stage optimizer to refine the initial guess before scaling up.
+        X, res_stage, stage_doping = optimize_stage_with_density(loss_init_no_dens, doping_fn_init, X;
+            δ = δ,
+            λ = λ,
+            grad_tol = grad_tol,
+            f_reltol = f_reltol,
+            show_trace = show_trace,
+            maxiter = warmup_iterations,
+            stage_label = stage_label,
+            density_tol = density_tol,
+            penalty_growth = penalty_growth,
+            outer_iters = density_outer_iters,
+            enforce_density = enforce_density
+        )
+
+        if Optim.converged(res_stage)
+            @info "$(stage_label) converged after $(res_stage.iterations) iterations." doping=stage_doping
+        else
+            @warn "$(stage_label) did not converge." gradient_norm=res_stage.g_residual doping=stage_doping
+        end
+    end
+
+    loss_no_dens = optimize_loss(bz, Nf, Nv, params)
+    doping_fn = X_val -> doping_bcs(X_val, bz, Nf, Nv)
 
     @info "Finding optimal X for full system size..."
-    # optimize X for the full system size
-    res = Optim.optimize(loss, g!, Optim.minimizer(res_init), Optim.LBFGS(;m=20,manifold=Optim.Stiefel()), Optim.Options(
-        iterations = maxiter,
-        g_tol = grad_tol,
-        show_trace = verbose,
-        successive_f_tol = 10,
-        f_reltol = f_reltol
-    ))
+    # Final pass on the target lattice size.
+    X_opt, res_final, final_doping = optimize_stage_with_density(loss_no_dens, doping_fn, X;
+        δ = δ,
+        λ = λ,
+        grad_tol = grad_tol,
+        f_reltol = f_reltol,
+        show_trace = show_trace,
+        maxiter = maxiter,
+        stage_label = "Final optimization (Lx=$(Lx), Ly=$(Ly))",
+        density_tol = density_tol,
+        penalty_growth = penalty_growth,
+        outer_iters = density_outer_iters,
+        enforce_density = enforce_density
+    )
 
-    @show Optim.minimum(res)
-    exact_energy = exact_energy_BCS_k(bz,t,μ,pairing_type,Δ_0)
-    println("Exact energy: $exact_energy")
+    if Optim.converged(res_final)
+        @info "Optimization for final system size converged after $(res_final.iterations) iterations."
+    else
+        @warn "Optimization for final system size did not converge." gradient_norm=res_final.g_residual
+    end
 
-    return Optim.minimizer(res), Optim.minimum(res), exact_energy
+    constraint_final = final_doping - δ
+    if enforce_density
+        @info "Final doping summary" target=δ achieved=final_doping deviation=constraint_final
+    end
+    if enforce_density && abs(constraint_final) > density_tol
+        @warn "Final doping deviates from target by $(constraint_final). Consider increasing density_outer_iters or penalty_growth."
+    end
+
+    E_exact = exact_energy(params, bz)
+    optim_energy = Optim.minimum(res_final)
+    deviation = abs(optim_energy - E_exact)
+
+    @info "Final energy summary" target=E_exact achieved=optim_energy deviation=deviation
+
+    return X_opt, optim_energy, E_exact
 end
 
-get_X_opt(;conf::Dict=parsefile(joinpath(GfPEPS.config_path, "conf_BCS_d_wave.json"))) = get_X_opt(
-    conf["params"]["N_physical_fermions_on_site"],
-    conf["params"]["N_virtual_fermions_on_bond"],
-    conf["hamiltonian"]["t"],
-    conf["hamiltonian"]["μ"],
-    conf["hamiltonian"]["pairing_type"],
-    conf["hamiltonian"]["Δ_0"];
-    δ = conf["hamiltonian"]["hole_density"],
-    solve_μ_from_δ = conf["hamiltonian"]["μ_from_hole_density"],
-    λ = conf["hamiltonian"]["lagrange_multiplier_density"],
-    Lx = conf["system_params"]["Lx"],
-    Ly = conf["system_params"]["Ly"],
-    bc = (Symbol(conf["system_params"]["x_bc"]), Symbol(conf["system_params"]["y_bc"])),
-    parity = conf["system_params"]["parity"],
-    maxiter = conf["params"]["maxiter"],
-    grad_tol = conf["params"]["grad_tol"],
-    f_reltol = conf["params"]["f_reltol"],
-    verbose = conf["params"]["show_trace"],
-    seed = conf["params"]["seed"]
-)
+function get_X_opt(;conf::Dict=parsefile(joinpath(GfPEPS.config_path, "conf_BCS_d_wave.json"))) 
+    params = begin
+        if conf["hamiltonian"]["type"] == "BCS"
+            BCS(
+                conf["hamiltonian"]["t"],
+                conf["hamiltonian"]["μ"],
+                conf["hamiltonian"]["pairing_type"],
+                conf["hamiltonian"]["Δ_0"]
+            )
+        elseif conf["hamiltonian"]["type"] == "Kitaev"
+            Kitaev(
+                conf["hamiltonian"]["Jx"],
+                conf["hamiltonian"]["Jy"],
+                conf["hamiltonian"]["Jz"]
+            )
+        else
+            error("Unknown Hamiltonian type: $(conf["hamiltonian"]["type"])")
+        end
+    end
+    
+    return get_X_opt(
+        conf["params"]["N_physical_fermions_on_site"],
+        conf["params"]["N_virtual_fermions_on_bond"],
+        params;
+        δ = conf["hamiltonian"]["hole_density"],
+        solve_μ_from_δ = conf["hamiltonian"]["μ_from_hole_density"],
+        enforce_density = conf["hamiltonian"]["enforce_density"],
+        λ = conf["hamiltonian"]["lagrange_multiplier_density"],
+        Lx = conf["system_params"]["Lx"],
+        Ly = conf["system_params"]["Ly"],
+        bc = (Symbol(conf["system_params"]["x_bc"]), Symbol(conf["system_params"]["y_bc"])),
+        parity = conf["system_params"]["parity"],
+        maxiter = conf["params"]["maxiter"],
+        show_trace = conf["params"]["show_trace"],
+        grad_tol = conf["params"]["grad_tol"],
+        f_reltol = conf["params"]["f_reltol"],
+        seed = conf["params"]["seed"],
+        density_tol =  conf["hamiltonian"]["density_tol"],
+        density_outer_iters = conf["hamiltonian"]["density_outer_iters"],
+        penalty_growth = conf["hamiltonian"]["penalty_growth"]
+    )
+end
