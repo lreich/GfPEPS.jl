@@ -161,33 +161,6 @@ function energy_CM(Γ_fiducial::AbstractMatrix, bz::BrillouinZone2D, Nf::Int, pa
     )
 end
 
-"""
-Gutzwiller projector from Hubbard (spin-1/2) 
-to the no-double-occupancy tJ space.
-
-In Gutzwiller approximation, z = 2δ/(1+δ), 
-where δ is doping before projection.
-"""
-function gutzwiller_projector(z::Float64)
-    V_hub = hub.hubbard_space(Trivial, Trivial)
-    V_tJ = tJ.tj_space(Trivial, Trivial)
-    P = zeros(Float64, V_hub → V_tJ) # from hubbard (Vect[FermionParity](0=>2, 1=>2)) to tJ (Vect[FermionParity](0=>1, 1=>2)
-    S = FermionParity
-    P[(S(0), S(0))][1, 1] = sqrt(z) # |0> -> sqrt(z) |0>
-    # P[(S(0), S(0))][1, 2] = 0     # |0> -> 0 |↑↓>
-    P[(S(1), S(1))][1, 1] = 1.0     # |↑> -> |↑>
-    P[(S(1), S(1))][2, 2] = 1.0     # |↓> -> |↓>
-    return P
-end
-
-"""
-Apply Gutzwiller projection to Hubbard (spin-1/2) PEPS
-"""
-function gutzwiller_project(z::Float64, peps::InfinitePEPS)
-    P = gutzwiller_projector(z)
-    return InfinitePEPS(collect(P * t for t in peps.A))
-end
-
 #======================================================================================
 Functions to solve μ from hole density
 ======================================================================================#
@@ -234,6 +207,33 @@ function doping_bcs(X::AbstractMatrix, bz::BrillouinZone2D, Nf::Int, Nv::Int)
 end
 
 """
+Gutzwiller projector from Hubbard (spin-1/2) 
+to the no-double-occupancy tJ space.
+
+In Gutzwiller approximation, z = 2δ/(1+δ), 
+where δ is doping before projection.
+"""
+function gutzwiller_projector(z::Float64)
+    V_hub = hub.hubbard_space(Trivial, Trivial)
+    V_tJ = tJ.tj_space(Trivial, Trivial)
+    P = zeros(Float64, V_hub → V_tJ) # from hubbard (Vect[FermionParity](0=>2, 1=>2)) to tJ (Vect[FermionParity](0=>1, 1=>2)
+    S = FermionParity
+    P[(S(0), S(0))][1, 1] = sqrt(z) # |0> -> sqrt(z) |0>
+    # P[(S(0), S(0))][1, 2] = 0     # |0> -> 0 |↑↓>
+    P[(S(1), S(1))][1, 1] = 1.0     # |↑> -> |↑>
+    P[(S(1), S(1))][2, 2] = 1.0     # |↓> -> |↓>
+    return P
+end
+
+"""
+Apply Gutzwiller projection to Hubbard (spin-1/2) PEPS
+"""
+function gutzwiller_project(z::Float64, peps::InfinitePEPS)
+    P = gutzwiller_projector(z)
+    return InfinitePEPS(collect(P * t for t in peps.A))
+end
+
+"""
     doping_peps(peps::InfinitePEPS, env::CTMRGEnv)
 
 The average doping `δ = 1 - (1/N) ∑_i ⟨f†_{iσ} f_{iσ}⟩`
@@ -245,15 +245,6 @@ function doping_peps(peps::InfinitePEPS, env::CTMRGEnv)
     return 1 - real(expectation_value(peps, O, env))
 end
 
-# Number operator in Gutzwiller projected space
-function e_num_GW(V)
-    t = zeros(T, V ← V)
-    I = sectortype(t)
-    t[(I(1), I(1))][1, 1] = 1
-    t[(I(1), I(1))][2, 2] = 1
-    return t
-end
-
 """
     doping_pepsGW(peps::InfinitePEPS, env::CTMRGEnv)
 
@@ -263,7 +254,62 @@ evaluated from the Gutzwiller projected GfPEPS tensor.
 function doping_pepsGW(peps::InfinitePEPS, env::CTMRGEnv)
     V = Vect[FermionParity](0 => 1, 1 => 2)
 
+    # Number operator in Gutzwiller projected space
+    function e_num_GW(V)
+        t = zeros(ComplexF64, V ← V)
+        I = sectortype(t)
+        t[(I(1), I(1))][1, 1] = 1
+        t[(I(1), I(1))][2, 2] = 1
+        return t
+    end
+
     lattice = collect(space(t, 1) for t in peps.A)
     O = LocalOperator(lattice, ((1, 1),) => e_num_GW(V))
     return 1 - real(expectation_value(peps, O, env))
+end
+
+"""
+    solve_for_fugacity(peps::InfinitePEPS, build_env::Function, δ_target::Real; z_range::NTuple{2, Float64} = (0.0, 1.0), initial_env::Union{Nothing,CTMRGEnv}=nothing)
+
+Find the fugacity `z` in the Gutzwiller projector such that the doping after projection of `peps`
+matches the target doping `δ_target`.
+"""
+function solve_for_fugacity(
+        peps::InfinitePEPS,
+        δ_target::Real;
+        z_range::NTuple{2, Float64} = (0.0, 1.0),
+        χ_env_max::Int = 20,
+        atol::Float64=1e-5,
+    )
+
+    function get_env(peps::InfinitePEPS; env_init::Union{Nothing, CTMRGEnv}=nothing)
+        boundary_alg = (; tol = 1e-8, maxiter = 500, alg = :simultaneous, trscheme = FixedSpaceTruncation())
+        Espace = Vect[FermionParity](0 => χ_env_max / 2, 1 => χ_env_max / 2)
+
+        if env_init === nothing
+            env0 = CTMRGEnv(peps, oneunit(space(peps.A[1],2)))
+            env1, = leading_boundary(env0, peps; alg = :sequential, trscheme = truncspace(Espace), maxiter = 5)
+            env, = leading_boundary(env1, peps; boundary_alg...);
+            return env;
+        else
+            env, = leading_boundary(env_init, peps; boundary_alg...);
+            return env;
+        end
+    end
+
+    # build initial environment
+    z_init = 2δ_target/(1+δ_target)
+    peps_projected = gutzwiller_project(z_init, peps)
+    env_init = get_env(peps_projected)
+
+    function mismatch(z)
+        peps_projected = gutzwiller_project(z, peps)
+        env_init = get_env(peps_projected; env_init=env_init)
+        # env_projected = _build_env_for_fugacity(build_env, projected, env_ref[])
+        # env_ref[] = env_projected
+        δ_projected = doping_pepsGW(peps_projected, env_init)
+        return δ_target - δ_projected
+    end
+
+    return find_zero(mismatch, z_range; atol=atol), env_init
 end

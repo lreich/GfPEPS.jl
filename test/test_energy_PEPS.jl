@@ -3,46 +3,44 @@ using Test
 using GfPEPS
 using TensorKit
 using PEPSKit
-using LinearAlgebra
-using BlockDiagonals
+using Random 
 
-res = Gaussian_fPEPS()
+Random.seed!(1234)
 
-Nf = res.Nf
-Nv = res.Nv
+Nf = 2
+Nv = 3
 N = (Nf + 4*Nv)
-Lx = res.Lx
-Ly = res.Ly
 
-X = res.X_opt
-peps = GfPEPS.translate(X, Nf, Nv)
+Γ_fiducial, X = GfPEPS.rand_CM(Nf,Nv)
 
-Espace = Vect[FermionParity](0 => 4, 1 => 4)
-env = CTMRGEnv(randn, ComplexF64, peps, Espace)
-# env = CTMRGEnv(randn, ComplexF64, peps)
-for χenv in [8, 16]
-    trscheme = truncdim(χenv) & truncerr(1.0e-12)
-    env, = leading_boundary(
-        env, peps; tol = 1.0e-10, maxiter = 200, trscheme,
-        alg = :sequential, projector_alg = :fullinfinite
-    )
-end
+# peps = GfPEPS.translate_naive(X, Nf, Nv)
+peps = GfPEPS.translate(X, Nf, Nv);
 
-Δ_x = res.Δ_options["Δ_x"]
-Δ_y = res.Δ_options["Δ_y"]
+χenv_max = 8
+boundary_alg = (; tol = 1e-8, maxiter=100, alg = :simultaneous, trscheme = FixedSpaceTruncation())
+Espace = Vect[FermionParity](0 => χenv_max / 2, 1 => χenv_max / 2)
+env0 = CTMRGEnv(peps, oneunit(space(peps.A[1],2)))
+env1, = leading_boundary(env0, peps; alg = :sequential, trscheme = truncspace(Espace), maxiter = 5)
+env, = leading_boundary(env1, peps; boundary_alg...)
+
+t = 1.0
+pairing_type = "d_wave"
+Δ_0 = 1.0
+μ = 1.0
+params = GfPEPS.BCS(
+    t,
+    μ,
+    pairing_type,
+    Δ_0,
+)
+
 Lx = 128
 Ly = 128
+
+ham = GfPEPS.BCS_spin_hamiltonian(ComplexF64, InfiniteSquare(1, 1); t=t, Δ_0 = Δ_0, μ = μ)
+energy1 = real(expectation_value(peps, ham, env))
+
 bz = BrillouinZone2D(Lx, Ly, (:APBC, :PBC))
+energy2 = GfPEPS.energy_CM(Γ_fiducial, bz, Nf, params)
 
-ham = GfPEPS.hamiltonian(ComplexF64, InfiniteSquare(1, 1); t=res.t, Δx = Δ_x, Δy = Δ_y, mu = res.μ)
-energy1 = expectation_value(peps, ham, env)
-# energy2 = BCS.energy_peps(G, bz, Np; Δx, Δy, t, mu)
-
-energy2 = GfPEPS.energy_CM(GfPEPS.Γ_fiducial(X, Nv, Nf), bz, Nf; t=res.t, mu=res.μ, Δx=Δ_x, Δy=Δ_y)
-
-# G_in = GfPEPS.G_in_Fourier(bz, Nv)
-# G_out = GaussianMap(Γ_out, G_in, Nf, Nv)
-# energy2 = GfPEPS.energy_loss(res.t, res.μ, bz, res.Δ_options["pairing_type"], Δ_x, Δ_y)(G_out)
-
-@info "Energy per site (PEPS)" energy1
-@info "Energy per site (CM)" energy2
+@test energy1 ≈ energy2
