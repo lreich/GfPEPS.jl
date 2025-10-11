@@ -34,7 +34,7 @@
     },
 
     "PEPSKit": {
-        "χ_env_max": 40,
+        "χ_env_max": 8,
         "tol": 1e-8,
         "maxiter": 500
     },

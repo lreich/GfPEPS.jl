@@ -31,7 +31,7 @@ using JSON: parsefile
     # find fugacity z such that doping after projection matches target doping
     δ = config["hamiltonian"]["hole_density"]
     δ_atol = 1e-8
-    z, env_projected = GfPEPS.solve_for_fugacity(peps, δ_PEPS; atol=δ_atol)
+    z, env_projected = GfPEPS.solve_for_fugacity(peps, δ_PEPS; χ_env_max=χ_env_max, atol=δ_atol)
     PG = GfPEPS.gutzwiller_projector(z)
     peps_projected = GfPEPS.gutzwiller_project(z,peps)
 
