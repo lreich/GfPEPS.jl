@@ -44,6 +44,27 @@ function energy_loss(params::Kitaev, bz::BrillouinZone2D)
     k_vals = bz.kvals
 
     ξk_batched = map(k -> ξ(k, params), eachcol(k_vals))
+    # Δk_batched = map(k -> Δ(k, params), eachcol(k_vals))
+    ξk_batched_summed = sum(ξk_batched)
+
+    # divide by number of k-points
+    invN = 1.0 / size(k_vals, 2)
+    invN = invN / 2 # 2 spins per unit cell
+
+    function energy(CM_out::AbstractArray)
+        #= 
+            qq-ordering of Majorana modes: (c_1, c_2, ..., c_(2(4Nv + Nf)))
+        =#
+        @inbounds E = 0.5 * ξk_batched_summed - 0.5*(dot(ξk_batched, CM_out[:, 1, 2]))
+        return real(E  * invN)
+    end
+
+    return energy
+end
+function energy_loss_old(params::Kitaev, bz::BrillouinZone2D)
+    k_vals = bz.kvals
+
+    ξk_batched = map(k -> ξ(k, params), eachcol(k_vals))
     Δk_batched = map(k -> Δ(k, params), eachcol(k_vals))
 
     # divide by number of k-points

@@ -23,7 +23,7 @@ Arguments
 
 Returns the optimized `X`, the `Optim` result struct, and the final hole density.
 """
-function optimize_stage_with_density(loss_energy::Function, doping_fn::Function, X_init::AbstractMatrix;
+function optimize_stage_with_density(loss_energy::Function, doping_fn::Union{Function, Nothing}, X_init::AbstractMatrix;
     δ::Float64,
     λ::Real,
     grad_tol::Float64,
@@ -48,9 +48,7 @@ function optimize_stage_with_density(loss_energy::Function, doping_fn::Function,
             f_reltol = f_reltol
         ))
         X_opt = Optim.minimizer(res)
-        last_doping = doping_fn(X_opt)
-        @info "$(stage_label): unconstrained optimization" doping=last_doping energy=loss_energy(X_opt)
-        return X_opt, res, last_doping
+        return X_opt, res, nothing
     end
 
     # Set up augmented-Lagrangian variables.
@@ -154,22 +152,39 @@ function get_X_opt(Nf::Int, Nv::Int, params::Union{BCS,Kitaev};
     # smaller system size for initial optimization to find better starting point
     L_init_even = 6
     L_init_odd = 5
-    Lx_inits = [(isodd(Lx) && Lx > L_init_even) ? L_init_odd : L_init_even]
-    Ly_inits = [isodd(Ly) ? L_init_odd : L_init_even]
-
-    while 2*Lx_inits[end] < Lx
-        if isodd(Lx_inits[end])
-            push!(Lx_inits, Lx_inits[end]*2 - 1)
+    Lx_inits = begin
+        if Lx > L_init_even
+            [isodd(Lx) ? L_init_odd : L_init_even]
         else
-            push!(Lx_inits, Lx_inits[end] * 2)
+            []
         end
     end
-    while 2*Ly_inits[end] < Ly
-        if isodd(Ly_inits[end])
-            push!(Ly_inits, Ly_inits[end]*2 - 1)
+    # Lx_inits = [(isodd(Lx) && Lx > L_init_even) ? L_init_odd : L_init_even]
+    Ly_inits = begin
+        if Ly > L_init_even
+            [isodd(Ly) ? L_init_odd : L_init_even]
         else
-            push!(Ly_inits, Ly_inits[end] * 2)
+            []
         end
+    end
+
+    try
+        while 2*Lx_inits[end] < Lx
+            if isodd(Lx_inits[end])
+                push!(Lx_inits, Lx_inits[end]*2 - 1)
+            else
+                push!(Lx_inits, Lx_inits[end] * 2)
+            end
+        end
+        while 2*Ly_inits[end] < Ly
+            if isodd(Ly_inits[end])
+                push!(Ly_inits, Ly_inits[end]*2 - 1)
+            else
+                push!(Ly_inits, Ly_inits[end] * 2)
+            end
+        end
+    catch
+        
     end
 
     if enforce_density
@@ -192,7 +207,7 @@ function get_X_opt(Nf::Int, Nv::Int, params::Union{BCS,Kitaev};
         has_dirac_points(bz_init, params)
 
         loss_init_no_dens = optimize_loss(bz_init, Nf, Nv, params)
-        doping_fn_init = X_mat -> doping_bcs(X_mat, bz_init, Nf, Nv)
+        doping_fn_init = enforce_density ?  X_mat -> doping_bcs(X_mat, bz_init, Nf, Nv) : nothing
 
         # Use the stage optimizer to refine the initial guess before scaling up.
         X, res_stage, stage_doping = optimize_stage_with_density(loss_init_no_dens, doping_fn_init, X;
@@ -210,16 +225,27 @@ function get_X_opt(Nf::Int, Nv::Int, params::Union{BCS,Kitaev};
         )
 
         if Optim.converged(res_stage)
-            @info "$(stage_label) converged after $(res_stage.iterations) iterations." doping=stage_doping
+            if enforce_density
+                @info "$(stage_label) converged after $(res_stage.iterations) iterations." energy=Optim.minimum(res_stage) doping=stage_doping
+            else
+                @info "$(stage_label) converged after $(res_stage.iterations) iterations." energy=Optim.minimum(res_stage)
+            end
         else
-            @warn "$(stage_label) did not converge." gradient_norm=res_stage.g_residual doping=stage_doping
+            if enforce_density
+                @warn "$(stage_label) did not converge." gradient_norm=res_stage.g_residual energy=Optim.minimum(res_stage) doping=stage_doping
+            else
+                @warn "$(stage_label) did not converge." gradient_norm=res_stage.g_residual energy=Optim.minimum(res_stage)
+            end
         end
     end
 
     loss_no_dens = optimize_loss(bz, Nf, Nv, params)
-    doping_fn = X_val -> doping_bcs(X_val, bz, Nf, Nv)
+    doping_fn = enforce_density ? X_val -> doping_bcs(X_val, bz, Nf, Nv) : nothing
 
     @info "Finding optimal X for full system size..."
+    stage_label = "Final optimization (Lx=$(Lx), Ly=$(Ly))"
+    @info "Optimize X for: Lx = $(Lx), Ly = $(Ly)"
+
     # Final pass on the target lattice size.
     X_opt, res_final, final_doping = optimize_stage_with_density(loss_no_dens, doping_fn, X;
         δ = δ,
@@ -228,7 +254,7 @@ function get_X_opt(Nf::Int, Nv::Int, params::Union{BCS,Kitaev};
         f_reltol = f_reltol,
         show_trace = show_trace,
         maxiter = maxiter,
-        stage_label = "Final optimization (Lx=$(Lx), Ly=$(Ly))",
+        stage_label = stage_label,
         density_tol = density_tol,
         penalty_growth = penalty_growth,
         outer_iters = density_outer_iters,
@@ -236,12 +262,12 @@ function get_X_opt(Nf::Int, Nv::Int, params::Union{BCS,Kitaev};
     )
 
     if Optim.converged(res_final)
-        @info "Optimization for final system size converged after $(res_final.iterations) iterations."
+        @info "$(stage_label) converged after $(res_final.iterations) iterations."
     else
-        @warn "Optimization for final system size did not converge." gradient_norm=res_final.g_residual
+        @warn "$(stage_label) did not converge." gradient_norm=res_final.g_residual
     end
 
-    constraint_final = final_doping - δ
+    constraint_final = enforce_density ? final_doping - δ : nothing
     if enforce_density
         @info "Final doping summary" target=δ achieved=final_doping deviation=constraint_final
     end
