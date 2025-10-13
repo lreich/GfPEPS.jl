@@ -167,7 +167,7 @@ function bloch_messiah_decomposition(M::AbstractMatrix)
     @assert P_bar ≈ - transpose(P_bar)
 
     # Bring P_bar to canonical form
-    S, TE = skew_canonical_form(P_bar)
+    S, _ = skew_canonical_form(P_bar)
     P_canonical = S' * P_bar * conj.(S)
 
     A = permute_zero_cols_to_end(P_canonical)
