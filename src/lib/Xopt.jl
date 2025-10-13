@@ -254,6 +254,7 @@ function get_X_opt(Nf::Int, Nv::Int, params::Union{BCS,Kitaev};
     deviation = abs(optim_energy - E_exact)
 
     @info "Final energy summary" target=E_exact achieved=optim_energy deviation=deviation
+    println()
 
     return X_opt, optim_energy, E_exact
 end
