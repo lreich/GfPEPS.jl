@@ -152,8 +152,10 @@ function get_X_opt(Nf::Int, Nv::Int, params::Union{BCS,Kitaev};
     end
 
     # smaller system size for initial optimization to find better starting point
-    Lx_inits = [isodd(Lx) ? 5 : 6]
-    Ly_inits = [isodd(Ly) ? 5 : 6]
+    L_init_even = 6
+    L_init_odd = 5
+    Lx_inits = [(isodd(Lx) && Lx > L_init_even) ? L_init_odd : L_init_even]
+    Ly_inits = [isodd(Ly) ? L_init_odd : L_init_even]
 
     while 2*Lx_inits[end] < Lx
         if isodd(Lx_inits[end])
