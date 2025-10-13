@@ -49,7 +49,7 @@ function energy_loss(params::Kitaev, bz::BrillouinZone2D)
 
     # divide by number of k-points
     invN = 1.0 / size(k_vals, 2)
-    invN = invN / 2 # 2 spins per unit cell
+    # invN = invN / 2 # 2 spins per unit cell
 
     function energy(CM_out::AbstractArray)
         #= 
