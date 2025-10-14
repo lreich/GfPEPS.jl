@@ -61,7 +61,7 @@ Returns:
     params.Jz - params.Jx* cos(k[1]) - params.Jy * cos(k[2])
 ```
 """
-ξ(k::AbstractVector{<:Real}, params::Kitaev) = 2 * (params.Jz + params.Jx * cos(k[1]) + params.Jy * cos(k[2]))
+ξ(k::AbstractVector{<:Real}, params::Kitaev) = 2 * (params.Jz - params.Jx * cos(k[1]) - params.Jy * cos(k[2]))
 
 Δ(k::AbstractVector{<:Real}, params::Kitaev) = 2 * im* (params.Jx * sin(k[1]) + params.Jy * sin(k[2]))
 # Δ(k::AbstractVector{<:Real}, params::Kitaev) = 2*(params.Jx*cis(k[1]) + params.Jy*cis(k[2]))
