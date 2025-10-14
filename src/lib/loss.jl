@@ -44,19 +44,29 @@ function energy_loss(params::Kitaev, bz::BrillouinZone2D)
     k_vals = bz.kvals
 
     ξk_batched = map(k -> ξ(k, params), eachcol(k_vals))
-    # Δk_batched = map(k -> Δ(k, params), eachcol(k_vals))
-    ξk_batched_summed = sum(ξk_batched)
+    Δk_batched = map(k -> Δ(k, params), eachcol(k_vals))
 
     # divide by number of k-points
     invN = 1.0 / size(k_vals, 2)
-    # invN = invN / 2 # 2 spins per unit cell
 
     function energy(CM_out::AbstractArray)
-        #= 
-            qq-ordering of Majorana modes: (c_1, c_2, ..., c_(2(4Nv + Nf)))
-        =#
-        @inbounds E = 0.5 * ξk_batched_summed - 0.5*(dot(ξk_batched, CM_out[:, 1, 2]))
-        return real(E  * invN)
+        @assert size(CM_out, 2) == 2 "Kitaev energy is implemented for Nf=1 (2 Majorana modes)."
+
+        γ12 = CM_out[:, 1, 2]
+        γ21 = CM_out[:, 2, 1]
+        γ11 = CM_out[:, 1, 1]
+        γ22 = CM_out[:, 2, 2]
+
+        # normal contribution ∑_k ξ_k (⟨f_k^† f_k⟩ - 1/2) with ⟨f_k^† f_k⟩ = (1 - γ12)/2
+        normal = -0.5 * dot(ξk_batched, γ12)
+
+        # anomalous contribution ∑_k Re[Δ_k ⟨f_{-k} f_k⟩]
+        # Fk = 0.25 .* (γ11 .+ im .* γ12 .+ im .* γ21 .- γ22)
+        # Fk = 0.5 .* (γ11 .+ im .* γ12)
+        Fk = 0.5 .* (-im .* γ11 .+ γ12)
+        anomalous = real(sum(Δk_batched .* Fk))
+
+        return real((normal + anomalous) * invN)
     end
 
     return energy

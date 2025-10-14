@@ -14,9 +14,14 @@ params_Kitaev = GfPEPS.Kitaev(
     config["hamiltonian"]["Jz"],
 )
 
-bz = GfPEPS.BrillouinZone2D(config["system_params"]["Lx"], config["system_params"]["Ly"], (:PBC, :APBC))
+# bz = GfPEPS.BrillouinZone2D(config["system_params"]["Lx"], config["system_params"]["Ly"], (:PBC, :APBC))
 
-GfPEPS.exact_energy(params_Kitaev, bz)
+# gammarnd, _ = GfPEPS.rand_CM(1,2)
+# G_in = GfPEPS.G_in_Fourier(bz, 2)
+# CMout = GaussianMap(GfPEPS.get_Γ_blocks(gammarnd,1)..., G_in)
+# GfPEPS.energy_loss(params_Kitaev,bz)(CMout)
+
+# GfPEPS.exact_energy(params_Kitaev, bz)
 
 # @testset "Energy Kitaev HC (vortex free)" begin
 #         config = parsefile(joinpath(GfPEPS.test_config_path, "conf_test_kitaev.json"))

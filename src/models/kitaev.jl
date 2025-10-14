@@ -63,8 +63,12 @@ Returns:
 """
 ξ(k::AbstractVector{<:Real}, params::Kitaev) = 2 * (params.Jz + params.Jx * cos(k[1]) + params.Jy * cos(k[2]))
 
-Δ(k::AbstractVector{<:Real}, params::Kitaev) = 2 * (params.Jx * sin(k[1]) + params.Jy * sin(k[2]))
+Δ(k::AbstractVector{<:Real}, params::Kitaev) = 2 * im* (params.Jx * sin(k[1]) + params.Jy * sin(k[2]))
 # Δ(k::AbstractVector{<:Real}, params::Kitaev) = 2*(params.Jx*cis(k[1]) + params.Jy*cis(k[2]))
+
+function A(k::AbstractVector{<:Real}, params::Kitaev)
+    return [0  2*ξ(k, params); -2*ξ(k, params) 0]
+end
 
 function E(k::AbstractVector{<:Real}, params::Kitaev)
     return sqrt(ξ(k, params)^2 + abs(Δ(k, params))^2)
