@@ -1,53 +1,63 @@
 """
 Kitaev Hamiltonian mapped to Dirac fermions on a square lattice
 ```
-    H = K ∑_{i,α} u_i,i+α (f†_{i} f_{i+α} + f†_{i} f†_{i+α}  + h.c.) + K ∑_i (2f†_{i} f_{i}-1)
+     H =  ∑_{r} [ J_x (c†_{r} + c_{r})*(c†_{r+r_1} - c_{r+r_1})
+        + J_y (c†_{r} + c_{r})*(c†_{r+r_2} - c_{r+r_2})
+        + J_z (2 c†_{r} c_{r} - 1) ]
 ```
-where α=̂x, ̂y and u_i,i+α = ±1 are Z2 gauge fields.
-
+where r sums over the lattice vectors and `r₁ = (0, 1)` and `r₂ = (1, 0)` correspond to the
+nearest-neighbour bonds of the infinite square lattice.
 """
-# function Kitaev_hamiltonian(
-#         T::Type{<:Number}, lattice::InfiniteSquare; gauge_field::String="vortex_free", Jx::Real = 1.0,
-#         Jy::Real = 1.0, Jz::Real = 1.0
-#     )
-#     if gauge_field == "vortex_free"
-#         pspace = FO.FermionSpace()
-#         pspaces = fill(pspace, (lattice.Nrows, lattice.Ncols))
+function Kitaev_Hamiltonian(
+        T::Type{<:Number}, lattice::InfiniteSquare; gauge_field::String="vortex_free",
+        Jx::Real = 1.0, Jy::Real = 1.0, Jz::Real = 1.0
+    )
+    gauge_field == "vortex_free" || throw(ArgumentError("Only vortex_free gauge field is implemented."))
 
-#         num = FO.f_num(T, Trivial, Trivial)
-#         unit = TensorKit.id(T, pspace)
-        
-#         hopping = Jx * FO.f_hopping(T) + Jx * (2*num  - unit)
-#         pairing = sqrt(2) * hub.singlet_plus(T, Trivial, Trivial)
-#         pairing += pairing'
+    pspace = FO.fermion_space()
+    spaces = fill(pspace, (lattice.Nrows, lattice.Ncols))
 
-#     else
-#         @error("Only vortex_free gauge field is implemented.")
-#     end
+    coeff_Jx = convert(T, Jx)
+    coeff_Jy = convert(T, Jy)
+    coeff_Jz = convert(T, Jz)
+    two = convert(T, 2)
 
-#     # Δx = Δ_0
-#     # if pairing_type == "s_wave"
-#     #     Δy = Δx
-#     # elseif pairing_type == "d_wave"
-#     #     Δy = -Δx
-#     # end
+    num = FO.f_num(T)
+    id_site = TensorKit.id(T, pspace)
+    onsite = coeff_Jz * (two * num - id_site)
 
-#     # pspace = hub.hubbard_space(Trivial, Trivial)
-#     # pspaces = fill(pspace, (lattice.Nrows, lattice.Ncols))
-#     # num = hub.e_num(T, Trivial, Trivial)
-#     # unit = TensorKit.id(T, pspace)
-#     # hopping = (-t) * hub.e_hopping(T, Trivial, Trivial) -
-#     #     (μ / 4) * (num ⊗ unit + unit ⊗ num)
-#     # pairing = sqrt(2) * hub.singlet_plus(T, Trivial, Trivial)
-#     # pairing += pairing'
-#     # return LocalOperator(
-#     #     pspaces,
-#     #     map(nearest_neighbours(lattice)) do bond
-#     #         return bond => hopping + pairing * (_is_xbond(bond) ? Δx : Δy)
-#     #     end...
-#     # )
-# end
-# Kitaev_hamiltonian(lattice; gauge_field="vortex_free", Jx=1.0, Jy=1.0, Jz=1.0) = Kitaev_hamiltonian(ComplexF64, lattice; gauge_field=gauge_field, Jx=Jx, Jy=Jy, Jz=Jz)
+    fpp = FO.f_plus_f_plus(T)
+    fpm = FO.f_plus_f_min(T)
+    fmp = FO.f_min_f_plus(T)
+    fmm = FO.f_min_f_min(T)
+    base_link = fpp - fpm + fmp - fmm
+    op_x = coeff_Jx * base_link
+    op_y = coeff_Jy * base_link
+
+    bonds_x = Tuple{CartesianIndex, CartesianIndex}[]
+    bonds_y = Tuple{CartesianIndex, CartesianIndex}[]
+    for (a, b) in nearest_neighbours(lattice)
+        δ = b - a
+        if δ == CartesianIndex(0, 1)
+            push!(bonds_x, (a, b))
+        elseif δ == CartesianIndex(1, 0)
+            push!(bonds_y, (b, a))
+        else
+            throw(ArgumentError("Unexpected bond displacement $δ for InfiniteSquare lattice."))
+        end
+    end
+
+    return LocalOperator(
+        spaces,
+        ((site,) => onsite for site in vertices(lattice))...,
+        (bond => op_x for bond in bonds_x)...,
+        (bond => op_y for bond in bonds_y)...,
+    )
+end
+Kitaev_Hamiltonian(lattice::InfiniteSquare; gauge_field::String="vortex_free", Jx::Real = 1.0, Jy::Real = 1.0, Jz::Real = 1.0) =
+    Kitaev_Hamiltonian(ComplexF64, lattice; gauge_field=gauge_field, Jx=Jx, Jy=Jy, Jz=Jz)
+
+Kitaev_hamiltonian(args...; kwargs...) = Kitaev_Hamiltonian(args...; kwargs...)
 
 
 
