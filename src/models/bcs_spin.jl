@@ -8,7 +8,7 @@ where v sums over the basis vectors e_x, e_y.
 
 - s-wave state: Δy = Δx.
 - d-wave state: Δy = -Δx.
-- (d+id) state: Δy = i Δx.
+- (p+ip) state: Δy = i Δx.
 """
 function BCS_spin_hamiltonian(
         T::Type{<:Number}, lattice::InfiniteSquare; pairing_type::String="d_wave", t::Float64 = 1.0,
@@ -24,6 +24,7 @@ function BCS_spin_hamiltonian(
     pspace = hub.hubbard_space(Trivial, Trivial)
     pspaces = fill(pspace, (lattice.Nrows, lattice.Ncols))
     num = hub.e_num(T, Trivial, Trivial)
+
     unit = TensorKit.id(T, pspace)
     hopping = (-t) * hub.e_hopping(T, Trivial, Trivial) -
         (μ / 4) * (num ⊗ unit + unit ⊗ num)
