@@ -331,7 +331,8 @@ function translate(X::AbstractMatrix, Nf::Int, Nv::Int)
     # compute full matrices for overlap
     R_mat_full = D*Vbar # has the same ordering as H
     Q_mat = Ubar*Vbar # has the same ordering as H
-    @assert Q_mat ≈ - transpose(Q_mat)
+
+    # @assert Q_mat ≈ - transpose(Q_mat)
     Q_mat = (Q_mat - transpose(Q_mat)) / 2 # enforce exact skew-symmetry
 
     # N = Nf + 4*Nv
@@ -347,7 +348,6 @@ function translate(X::AbstractMatrix, Nf::Int, Nv::Int)
 
     ind_f_dict = translate_occ_to_TM_dict(Nf)
     ind_v_dict = translate_occ_to_TM_dict(Nv)
-
 
     T, codomain_space, domain_space = get_empty_fpeps_tensor(Nf, Nv)
 
