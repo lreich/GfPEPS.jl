@@ -99,26 +99,6 @@ function exact_energy(params::BCS, bz::BrillouinZone2D)
     end)
 end
 
-# function exact_energy_BCS_k(bz::BrillouinZone2D, t::Real, μ::Real, pairing_type::String, Δ_0::Real) 
-#     if pairing_type == "kitaev_vortex_free"
-#         # Interpret Δ_0 as J (Jx=Jy=J), and μ = -2 Jz  => Jz = -μ/2
-#         J = Δ_0
-#         Jx = J; Jy = J; Jz = -μ/2
-
-#         # Majorana band energy per unit cell: E_M(k) = 2 * |g(k)|
-#         e_uc = -mean(map(eachcol(bz.kvals)) do k
-#             2 * abs(g_kitaev(k; Jx=Jx, Jy=Jy, Jz=Jz))
-#         end)
-
-#         # return per site (honeycomb has 2 sites per unit cell)
-#         return e_uc / 2
-#     else
-#         return mean(map(eachcol(bz.kvals)) do k
-#             ξ(k,t,μ) - E(k, t, μ, pairing_type, Δ_0)
-#         end)
-#     end
-# end
-
 """
     has_dirac_points(bz::BrillouinZone2D, t::Real, μ::Real, pairing_type::String, Δ_kwargs...)
 
