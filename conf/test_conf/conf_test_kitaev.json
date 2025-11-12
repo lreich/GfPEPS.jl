@@ -22,14 +22,7 @@
         "type": "Kitaev",
         "Jx": 1.0,
         "Jy": 1.0,
-        "Jz": 1.0, 
-        "hole_density": 0.0,
-        "μ_from_hole_density": false,
-        "lagrange_multiplier_density": 1e2,
-        "enforce_density": false,
-        "density_tol": 1e-6,
-        "penalty_growth": 1e1,
-        "density_outer_iters": 10
+        "Jz": 1.0
     },
 
     "file":{
