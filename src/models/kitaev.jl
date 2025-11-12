@@ -17,9 +17,7 @@ function Kitaev_Hamiltonian(
     pspace = fermion_space()
     spaces = fill(pspace, (lattice.Nrows, lattice.Ncols))
 
-    num = FO.f_num(T)
-    id_site = TensorKit.id(T, pspace)
-    onsite = Jz * (2 * num - id_site)
+    onsite = Jz * sigma_z_sigma_z_op()
 
     pp = FO.f_plus_f_plus(T)
     pm = FO.f_plus_f_min(T)
@@ -51,6 +49,68 @@ function Kitaev_Hamiltonian(
 end
 Kitaev_Hamiltonian(lattice::InfiniteSquare; gauge_field::String="vortex_free", Jx::Real = 1.0, Jy::Real = 1.0, Jz::Real = 1.0) = Kitaev_Hamiltonian(ComplexF64, lattice; gauge_field=gauge_field, Jx=Jx, Jy=Jy, Jz=Jz)
 
+function sigma_z_sigma_z_op(;lattice::InfiniteSquare=InfiniteSquare(1,1))
+    pspace = fermion_space()
+    spaces = fill(pspace, (lattice.Nrows, lattice.Ncols))
+
+    id_site = TensorKit.id(ComplexF64, pspace)
+    num = FO.f_num(ComplexF64)
+    onsite = 2 * num - id_site
+
+    return LocalOperator(
+        spaces,
+        ((site,) => onsite for site in vertices(lattice))...
+    )
+end
+
+function sigma_x_sigma_x_op(;lattice::InfiniteSquare=InfiniteSquare(1,1))
+    pspace = fermion_space()
+    spaces = fill(pspace, (lattice.Nrows, lattice.Ncols))
+
+    pp = FO.f_plus_f_plus(ComplexF64)
+    pm = FO.f_plus_f_min(ComplexF64)
+    mp = FO.f_min_f_plus(ComplexF64)
+    mm = FO.f_min_f_min(ComplexF64)
+    base_link = pp - pm + mp - mm
+
+    bonds_x = Tuple{CartesianIndex, CartesianIndex}[]
+    for (a, b) in nearest_neighbours(lattice)
+        δ = b - a
+        if δ == CartesianIndex(0, 1)
+            push!(bonds_x, (a, b))
+        end
+    end
+
+    return LocalOperator(
+        spaces,
+        (bond => base_link for bond in bonds_x)...
+    )
+end
+
+function sigma_y_sigma_y_op(;lattice::InfiniteSquare=InfiniteSquare(1,1))
+    pspace = fermion_space()
+    spaces = fill(pspace, (lattice.Nrows, lattice.Ncols))
+
+    pp = FO.f_plus_f_plus(ComplexF64)
+    pm = FO.f_plus_f_min(ComplexF64)
+    mp = FO.f_min_f_plus(ComplexF64)
+    mm = FO.f_min_f_min(ComplexF64)
+    base_link = pp - pm + mp - mm
+
+    bonds_y = Tuple{CartesianIndex, CartesianIndex}[]
+    for (a, b) in nearest_neighbours(lattice)
+        δ = b - a
+        if δ == CartesianIndex(1, 0)
+            push!(bonds_y, (b, a))
+        end
+    end
+
+    return LocalOperator(
+        spaces,
+        (bond => base_link for bond in bonds_y)...
+    )
+end
+
 """
     ξ(k::AbstractVector{<:Real}, params::Kitaev)
 
@@ -63,12 +123,17 @@ Returns:
 """
 ξ(k::AbstractVector{<:Real}, params::Kitaev) = 2 * (params.Jz - params.Jx * cos(k[1]) - params.Jy * cos(k[2]))
 
-Δ(k::AbstractVector{<:Real}, params::Kitaev) = 2 * im* (params.Jx * sin(k[1]) + params.Jy * sin(k[2]))
-# Δ(k::AbstractVector{<:Real}, params::Kitaev) = 2*(params.Jx*cis(k[1]) + params.Jy*cis(k[2]))
+"""
+    Δ(k::AbstractVector{<:Real}, params::Kitaev)
 
-function A(k::AbstractVector{<:Real}, params::Kitaev)
-    return [0  2*ξ(k, params); -2*ξ(k, params) 0]
-end
+(Vortex free configuration)
+
+Returns:
+```
+    2 * im* (params.Jx * sin(k[1]) + params.Jy * sin(k[2]))
+```
+"""
+Δ(k::AbstractVector{<:Real}, params::Kitaev) = 2 * im* (params.Jx * sin(k[1]) + params.Jy * sin(k[2]))
 
 function E(k::AbstractVector{<:Real}, params::Kitaev)
     return sqrt(ξ(k, params)^2 + abs(Δ(k, params))^2)
@@ -116,11 +181,7 @@ function energy_CM(Γ_fiducial::AbstractMatrix, bz::BrillouinZone2D, Nf::Int, pa
         map(eachcol(bz.kvals)) do k
             G_in = G_in_single_k(k, χ)
             Gf = A + B * inv(D + G_in) * transpose(B)
-            # qq ordering of Majorana modes: (c_1, c_2, ..., c_(2(4Nv + Nf)))
-            # return real(
-            #     ξ(k,t,mu) * (2 - Gf[1, 2] - Gf[3, 4]) / 2 +
-            #         Δ(pairing_type, k, Δ_0) * (Gf[1, 4] + Gf[2, 3] + 1.0im * (Gf[2, 4] - Gf[1, 3])) / 2 
-            # )
+            
             energy_k = real(
                 ξ(k, params) * (2 - Gf[1, 2] - Gf[3, 4]) / 2 +
                     Δ(k, params) * (Gf[1, 4] + Gf[2, 3] + 1.0im * (Gf[2, 4] - Gf[1, 3])) / 2
