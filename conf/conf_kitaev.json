@@ -33,7 +33,7 @@
     },
 
     "file":{
-        "name": "data/kitaev_vortex_free.jdl2"
+        "name": "data/kitaev_vortex_free.jld2"
     },
 
     "backend": "cpu"

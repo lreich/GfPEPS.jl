@@ -50,7 +50,7 @@ function skew_canonical_form(P::AbstractMatrix)
 
     E, Φ = eigen(Hermitian(W); sortby = (x -> -real(x)))
     alphas = sqrt.(abs.(E))
-    tol = 1e-10
+    tol = 1e-8
 
     # sort indices by magnitude descending to make pairing stable
     idx_sorted = sortperm(alphas, rev = true)
