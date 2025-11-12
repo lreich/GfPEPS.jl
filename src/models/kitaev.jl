@@ -14,25 +14,20 @@ function Kitaev_Hamiltonian(
     )
     gauge_field == "vortex_free" || throw(ArgumentError("Only vortex_free gauge field is implemented."))
 
-    pspace = FO.fermion_space()
+    pspace = fermion_space()
     spaces = fill(pspace, (lattice.Nrows, lattice.Ncols))
-
-    coeff_Jx = convert(T, Jx)
-    coeff_Jy = convert(T, Jy)
-    coeff_Jz = convert(T, Jz)
-    two = convert(T, 2)
 
     num = FO.f_num(T)
     id_site = TensorKit.id(T, pspace)
-    onsite = coeff_Jz * (two * num - id_site)
+    onsite = Jz * (2 * num - id_site)
 
-    fpp = FO.f_plus_f_plus(T)
-    fpm = FO.f_plus_f_min(T)
-    fmp = FO.f_min_f_plus(T)
-    fmm = FO.f_min_f_min(T)
-    base_link = fpp - fpm + fmp - fmm
-    op_x = coeff_Jx * base_link
-    op_y = coeff_Jy * base_link
+    pp = FO.f_plus_f_plus(T)
+    pm = FO.f_plus_f_min(T)
+    mp = FO.f_min_f_plus(T)
+    mm = FO.f_min_f_min(T)
+    base_link = pp - pm + mp - mm
+    op_x = Jx * base_link
+    op_y = Jy * base_link
 
     bonds_x = Tuple{CartesianIndex, CartesianIndex}[]
     bonds_y = Tuple{CartesianIndex, CartesianIndex}[]
@@ -54,12 +49,7 @@ function Kitaev_Hamiltonian(
         (bond => op_y for bond in bonds_y)...,
     )
 end
-Kitaev_Hamiltonian(lattice::InfiniteSquare; gauge_field::String="vortex_free", Jx::Real = 1.0, Jy::Real = 1.0, Jz::Real = 1.0) =
-    Kitaev_Hamiltonian(ComplexF64, lattice; gauge_field=gauge_field, Jx=Jx, Jy=Jy, Jz=Jz)
-
-Kitaev_hamiltonian(args...; kwargs...) = Kitaev_Hamiltonian(args...; kwargs...)
-
-
+Kitaev_Hamiltonian(lattice::InfiniteSquare; gauge_field::String="vortex_free", Jx::Real = 1.0, Jy::Real = 1.0, Jz::Real = 1.0) = Kitaev_Hamiltonian(ComplexF64, lattice; gauge_field=gauge_field, Jx=Jx, Jy=Jy, Jz=Jz)
 
 """
     ξ(k::AbstractVector{<:Real}, params::Kitaev)

@@ -223,8 +223,8 @@ function get_empty_fpeps_tensor(Nf::Int, Nv::Int)
 
     # return T, codomain_spaces, domain_space
 
-    physical_spaces = Vect[fℤ₂](0 => 2^(Nf - 1), 1 => 2^(Nf - 1))
-    V_bonds = Vect[fℤ₂](0 => 2^(Nv - 1), 1 => 2^(Nv - 1))
+    physical_spaces = Vect[fℤ₂](0 => 2^Nf / 2, 1 => 2^Nf / 2)
+    V_bonds = Vect[fℤ₂](0 => 2^Nv / 2, 1 => 2^Nv / 2)
     virtual_spaces = V_bonds ⊗ V_bonds ⊗ V_bonds ⊗ V_bonds
 
     codomain_spaces = reduce(⊗, [physical_spaces, virtual_spaces])
