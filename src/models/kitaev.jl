@@ -197,6 +197,5 @@ function energy_CM_k(Γ_fiducial::AbstractMatrix, k::AbstractVector{<:Real}, Nf:
     G_in = G_in_single_k(k, Nv)
     Gf = A + B * inv(D + G_in) * transpose(B)
     
-    # return real(0.5 * (ξ(k, params) * (1 - real(Gf[1, 2])) - imag(Δ(k, params)) * imag(Gf[1, 2])) - params.Jz)
-    return real(0.5 * (ξ(k, params) * (1 - real(Gf[1, 2])) - imag(Δ(k, params)) * imag(Gf[1, 2])))
+    return real(0.5 * (ξ(k, params) * (1 - real(Gf[1, 2])) - imag(Δ(k, params)) * imag(Gf[1, 2])) - params.Jz)
 end

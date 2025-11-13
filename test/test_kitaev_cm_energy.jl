@@ -11,27 +11,11 @@ filename = config["file"]["name"]
 Nf = config["params"]["N_physical_fermions_on_site"]
 Nv = config["params"]["N_virtual_fermions_on_bond"]
 
-# function gapless_bz(Nx::Int, Ny::Int; bc::NTuple{2,Symbol}=(:PBC, :PBC))
-#     Nx_dirac = ((Nx + 2) ÷ 3) * 3
-#     Ny_dirac = ((Ny + 2) ÷ 3) * 3
-#     return GfPEPS.BrillouinZone2D(Nx_dirac, Ny_dirac, bc)
-# end
+bz = GfPEPS.BrillouinZone2D(24, 24, (:PBC, :PBC))
 
-# bz = gapless_bz(100, 100; bc = (:PBC, :PBC))
-
-bz = GfPEPS.BrillouinZone2D(1200, 1200, (:PBC, :PBC))
-
-# config["hamiltonian"]["Jx"] = 0
-# config["hamiltonian"]["Jy"] = 0.25
-# config["hamiltonian"]["Jz"] = 0.5
-
-# Jx = 1.0
-# Jy = 1.0
-# Jz = 1.0
-
-Jx = 1.0
-Jy = 0.8
-Jz = 1.0
+Jx = 0.0
+Jy = 0.3
+Jz = 0.7
 
 function satisfy_triangle(Jx,Jy,Jz)
     res = true
@@ -52,24 +36,20 @@ end
 
 kpairs = map(eachcol(bz.kvals)) do k return k end
 
-
-
 params_Kitaev = GfPEPS.Kitaev(Jx, Jy, Jz)
 
 Efunc(k) = GfPEPS.E(k, params_Kitaev)
 @show minimum(Efunc.(kpairs));
 
+config["hamiltonian"]["Jx"] = Jx
+config["hamiltonian"]["Jy"] = Jy
+config["hamiltonian"]["Jz"] = Jz
 
+X_opt, optim_energy, exact_energy = GfPEPS.get_X_opt(;conf=config)
+Γ_opt = GfPEPS.Γ_fiducial(X_opt, Nv, Nf)
 
-# Evals2 = []
-# for k in eachcol(bz.kvals)
-#     push!(Evals2, GfPEPS.E(k, params_Kitaev))
-# end
-
-# display(sort(abs.(Evals2)))
-
-# X_opt, optim_energy, exact_energy = GfPEPS.get_X_opt(;conf=config)
-# Γ_opt = GfPEPS.Γ_fiducial(X_opt, Nv, Nf)
+Efunc2(k) = abs(GfPEPS.energy_CM_k(Γ_opt, k, Nf, params_Kitaev))
+@show minimum(Efunc2.(kpairs));
 
 # etest = GfPEPS.energy_CM(Γ_opt, bz, Nf, params_Kitaev)
 
