@@ -3,6 +3,7 @@ using PEPSKit
 using GfPEPS
 using JLD2
 using JSON: parsefile
+using Test
 
 # conf = parsefile(joinpath(@__DIR__,"../../conf/conf_compute_EE.json"))
 config = parsefile(joinpath(@__DIR__,"../conf/conf_kitaev.json"))
@@ -13,9 +14,9 @@ Nv = config["params"]["N_virtual_fermions_on_bond"]
 
 bz = GfPEPS.BrillouinZone2D(24, 24, (:PBC, :PBC))
 
-Jx = 0.0
-Jy = 0.3
-Jz = 0.7
+Jx = 0.25
+Jy = 0.25
+Jz = 0.5
 
 function satisfy_triangle(Jx,Jy,Jz)
     res = true
@@ -50,6 +51,8 @@ X_opt, optim_energy, exact_energy = GfPEPS.get_X_opt(;conf=config)
 
 Efunc2(k) = abs(GfPEPS.energy_CM_k(Γ_opt, k, Nf, params_Kitaev))
 @show minimum(Efunc2.(kpairs));
+
+@test minimum(Efunc.(kpairs)) ≈ minimum(Efunc2.(kpairs)) atol=1e-5
 
 # etest = GfPEPS.energy_CM(Γ_opt, bz, Nf, params_Kitaev)
 
