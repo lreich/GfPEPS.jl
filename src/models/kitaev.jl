@@ -133,7 +133,7 @@ Returns:
     2 * im* (params.Jx * sin(k[1]) + params.Jy * sin(k[2]))
 ```
 """
-Δ(k::AbstractVector{<:Real}, params::Kitaev) = 2 * im* (params.Jx * sin(k[1]) + params.Jy * sin(k[2]))
+Δ(k::AbstractVector{<:Real}, params::Kitaev) = 2im * (params.Jx * sin(k[1]) + params.Jy * sin(k[2]))
 
 function E(k::AbstractVector{<:Real}, params::Kitaev)
     return sqrt(ξ(k, params)^2 + abs(Δ(k, params))^2)
@@ -172,21 +172,31 @@ The energy of a Gaussian fPEPS evaluated from
 the fiducial state correlation matrix `G`.
 """
 function energy_CM(Γ_fiducial::AbstractMatrix, bz::BrillouinZone2D, Nf::Int, params::Kitaev)
-    A = Γ_fiducial[1:2*Nf, 1:2*Nf]
-    B = Γ_fiducial[1:2*Nf, 2*Nf+1:end]
-    D = Γ_fiducial[2*Nf+1:end, 2*Nf+1:end]
+    A, B, D = get_Γ_blocks(Γ_fiducial, Nf)
 
-    χ = div(size(Γ_fiducial, 1) - 2 * Nf, 8)
+    Nv = div(size(Γ_fiducial, 1) - 2 * Nf, 8)
+
     return mean(
         map(eachcol(bz.kvals)) do k
-            G_in = G_in_single_k(k, χ)
+            G_in = G_in_single_k(k, Nv)
             Gf = A + B * inv(D + G_in) * transpose(B)
-            
-            energy_k = real(
-                ξ(k, params) * (2 - Gf[1, 2] - Gf[3, 4]) / 2 +
-                    Δ(k, params) * (Gf[1, 4] + Gf[2, 3] + 1.0im * (Gf[2, 4] - Gf[1, 3])) / 2
-            )
-            return (energy_k - ξ(k, params)) / 2
+
+            return real(0.5 * (ξ(k, params) * (1 - real(Gf[1, 2])) - imag(Δ(k, params)) * imag(Gf[1, 2])) - params.Jz)
         end
     )
+end
+
+"""
+The energy of a Gaussian fPEPS evaluated from 
+the fiducial state correlation matrix `G`.
+"""
+function energy_CM_k(Γ_fiducial::AbstractMatrix, k::AbstractVector{<:Real}, Nf::Int, params::Kitaev)
+    A,B,D = get_Γ_blocks(Γ_fiducial, Nf)
+
+    Nv = div(size(Γ_fiducial, 1) - 2 * Nf, 8)
+    G_in = G_in_single_k(k, Nv)
+    Gf = A + B * inv(D + G_in) * transpose(B)
+    
+    # return real(0.5 * (ξ(k, params) * (1 - real(Gf[1, 2])) - imag(Δ(k, params)) * imag(Gf[1, 2])) - params.Jz)
+    return real(0.5 * (ξ(k, params) * (1 - real(Gf[1, 2])) - imag(Δ(k, params)) * imag(Gf[1, 2])))
 end
