@@ -295,9 +295,9 @@ function get_X_opt(Nf::Int, Nv::Int, params::Union{BCS,Kitaev};
     @info "Final energy summary" target=E_exact achieved=optim_energy deviation=deviation
     println()
 
-    info_obj = Dict(
-        :converged => Optim.converged(res_final),
-        :trace => res_final.trace
+    info_obj = (
+        converged = Optim.converged(res_final),
+        trace = res_final.trace
     )
 
     return X_opt, optim_energy, E_exact, info_obj
