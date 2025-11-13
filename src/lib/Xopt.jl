@@ -45,7 +45,9 @@ function optimize_stage_with_density(loss_energy::Function, doping_fn::Union{Fun
             g_tol = grad_tol,
             show_trace = show_trace,
             successive_f_tol = 10,
-            f_reltol = f_reltol
+            f_reltol = f_reltol,
+            store_trace = true,
+            extended_trace = false
         ))
         X_opt = Optim.minimizer(res)
         return X_opt, res, nothing
@@ -79,7 +81,9 @@ function optimize_stage_with_density(loss_energy::Function, doping_fn::Union{Fun
             g_tol = grad_tol,
             show_trace = show_trace,
             successive_f_tol = 10,
-            f_reltol = f_reltol
+            f_reltol = f_reltol,
+            store_trace = true,
+            extended_trace = false
         ))
 
         last_res = res
@@ -287,11 +291,16 @@ function get_X_opt(Nf::Int, Nv::Int, params::Union{BCS,Kitaev};
     E_exact = exact_energy(params, bz)
     optim_energy = Optim.minimum(res_final)
     deviation = abs(optim_energy - E_exact)
-
+    
     @info "Final energy summary" target=E_exact achieved=optim_energy deviation=deviation
     println()
 
-    return X_opt, optim_energy, E_exact, res_final
+    info_obj = Dict(
+        :converged => Optim.converged(res_final),
+        :trace => res_final.trace
+    )
+
+    return X_opt, optim_energy, E_exact, info_obj
 end
 
 function get_X_opt(;conf::Dict=parsefile(joinpath(GfPEPS.config_path, "conf_BCS_d_wave.json")), X_init::Union{AbstractMatrix, Nothing}=nothing) 
