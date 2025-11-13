@@ -14,9 +14,9 @@ Nv = config["params"]["N_virtual_fermions_on_bond"]
 
 bz = GfPEPS.BrillouinZone2D(24, 24, (:PBC, :PBC))
 
-Jx = 0.25
-Jy = 0.25
-Jz = 0.5
+Jx = 0.2
+Jy = 0.4
+Jz = 0.4
 
 function satisfy_triangle(Jx,Jy,Jz)
     res = true
@@ -46,7 +46,7 @@ config["hamiltonian"]["Jx"] = Jx
 config["hamiltonian"]["Jy"] = Jy
 config["hamiltonian"]["Jz"] = Jz
 
-X_opt, optim_energy, exact_energy = GfPEPS.get_X_opt(;conf=config)
+X_opt, optim_energy, exact_energy, info = GfPEPS.get_X_opt(;conf=config)
 Γ_opt = GfPEPS.Γ_fiducial(X_opt, Nv, Nf)
 
 Efunc2(k) = abs(GfPEPS.energy_CM_k(Γ_opt, k, Nf, params_Kitaev))

@@ -131,14 +131,23 @@ function get_X_opt(Nf::Int, Nv::Int, params::Union{BCS,Kitaev};
     seed::Int=1234,
     density_tol::Float64=1.0e-6,
     density_outer_iters::Int=8,
-    penalty_growth::Float64=10.0)
+    penalty_growth::Float64=10.0,
+    X_init::Union{AbstractMatrix, Nothing}=nothing
+    )
 
     MKL.set_num_threads(Sys.CPU_THREADS) 
 
     Random.seed!(seed)
 
     # initial ortogonal matrix X to construct Γ_out with correct parity sector (even)
-    _, X = rand_CM(Nf,Nv; parity=parity)
+    X = begin
+        if isnothing(X_init)
+            rand_CM(Nf,Nv; parity=parity)[2]
+        else
+            @info "Using initial X matrix for optimization."
+            X_init
+        end
+    end
 
     # construct Brillouin zone
     bz = BrillouinZone2D(Lx,Ly,bc)
@@ -153,7 +162,7 @@ function get_X_opt(Nf::Int, Nv::Int, params::Union{BCS,Kitaev};
     L_init_even = 6
     L_init_odd = 5
     Lx_inits = begin
-        if Lx > L_init_even
+        if Lx > L_init_even && isnothing(X_init)
             [isodd(Lx) ? L_init_odd : L_init_even]
         else
             []
@@ -161,7 +170,7 @@ function get_X_opt(Nf::Int, Nv::Int, params::Union{BCS,Kitaev};
     end
     # Lx_inits = [(isodd(Lx) && Lx > L_init_even) ? L_init_odd : L_init_even]
     Ly_inits = begin
-        if Ly > L_init_even
+        if Ly > L_init_even && isnothing(X_init)
             [isodd(Ly) ? L_init_odd : L_init_even]
         else
             []
@@ -169,7 +178,7 @@ function get_X_opt(Nf::Int, Nv::Int, params::Union{BCS,Kitaev};
     end
 
     try
-        while 2*Lx_inits[end] < Lx
+        while 2*Lx_inits[end] < Lx 
             if isodd(Lx_inits[end])
                 push!(Lx_inits, Lx_inits[end]*2 - 1)
             else
@@ -282,10 +291,10 @@ function get_X_opt(Nf::Int, Nv::Int, params::Union{BCS,Kitaev};
     @info "Final energy summary" target=E_exact achieved=optim_energy deviation=deviation
     println()
 
-    return X_opt, optim_energy, E_exact
+    return X_opt, optim_energy, E_exact, res_final
 end
 
-function get_X_opt(;conf::Dict=parsefile(joinpath(GfPEPS.config_path, "conf_BCS_d_wave.json"))) 
+function get_X_opt(;conf::Dict=parsefile(joinpath(GfPEPS.config_path, "conf_BCS_d_wave.json")), X_init::Union{AbstractMatrix, Nothing}=nothing) 
     params = begin
         if conf["hamiltonian"]["type"] == "BCS"
             BCS(
@@ -324,6 +333,7 @@ function get_X_opt(;conf::Dict=parsefile(joinpath(GfPEPS.config_path, "conf_BCS_
         seed = get(get(conf, "params", Dict()), "seed", 1234),
         density_tol =  get(get(conf, "hamiltonian", Dict()), "density_tol", 1e-6),
         density_outer_iters = get(get(conf, "hamiltonian", Dict()), "density_outer_iters", 10),
-        penalty_growth = get(get(conf, "hamiltonian", Dict()), "penalty_growth", 1e1)
+        penalty_growth = get(get(conf, "hamiltonian", Dict()), "penalty_growth", 1e1),
+        X_init = X_init
     )
 end

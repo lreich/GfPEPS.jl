@@ -11,7 +11,7 @@ using JSON: parsefile
 
 @testset "Hole density BCS after Gutzwiller projection" begin
     config = parsefile(joinpath(GfPEPS.test_config_path, "conf_test_BCS_Gutzwiller_doping.json"))
-    X_opt, optim_energy, E_exact = GfPEPS.get_X_opt(;conf=config)
+    X_opt, _ = GfPEPS.get_X_opt(;conf=config)
     peps = GfPEPS.translate(X_opt, config["params"]["N_physical_fermions_on_site"], config["params"]["N_virtual_fermions_on_bond"]);
 
     bz = GfPEPS.BrillouinZone2D(config["system_params"]["Lx"], config["system_params"]["Ly"], (Symbol(config["system_params"]["x_bc"]), Symbol(config["system_params"]["y_bc"])))

@@ -10,7 +10,7 @@ using JSON: parsefile
     Lx = conf["system_params"]["Lx"]
     Ly = conf["system_params"]["Ly"]
 
-    X_opt, optim_energy, exact_energy = get_X_opt(;conf=conf)
+    X_opt, _ = get_X_opt(;conf=conf)
     Γ_opt = Γ_fiducial(X_opt, Nv, Nf)
 
     bc = (Symbol(conf["system_params"]["x_bc"]), Symbol(conf["system_params"]["y_bc"]))
