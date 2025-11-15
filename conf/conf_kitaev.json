@@ -12,7 +12,7 @@
     "system_params":{
         "Lx": 24,
         "Ly": 24,
-        "x_bc": "PBC",
+        "x_bc": "APBC",
         "y_bc": "PBC",
         "lattice_type": "square",
         "parity": 1

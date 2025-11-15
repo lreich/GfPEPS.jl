@@ -10,8 +10,8 @@
     },
 
     "system_params":{
-        "Lx": 20,
-        "Ly": 20,
+        "Lx": 12,
+        "Ly": 12,
         "x_bc": "PBC",
         "y_bc": "APBC",
         "lattice_type": "square",

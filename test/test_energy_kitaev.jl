@@ -19,8 +19,8 @@ params_Kitaev = GfPEPS.Kitaev(
 
 peps = GfPEPS.translate(X_opt, config["params"]["N_physical_fermions_on_site"], config["params"]["N_virtual_fermions_on_bond"])
 
-χenv_max = 20
-boundary_alg = (; tol = 1e-8, maxiter=500, alg = :simultaneous, trscheme = FixedSpaceTruncation())
+χenv_max = 12
+boundary_alg = (; tol = 1e-8, maxiter=1000, alg = :simultaneous, trscheme = FixedSpaceTruncation())
 Espace = Vect[FermionParity](0 => χenv_max / 2, 1 => χenv_max / 2)
 env0 = CTMRGEnv(peps, oneunit(space(peps.A[1],2)))
 env1, = leading_boundary(env0, peps; alg = :sequential, trscheme = truncspace(Espace), maxiter = 5);

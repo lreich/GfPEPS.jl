@@ -17,8 +17,10 @@ function Kitaev_Hamiltonian(
     pspace = fermion_space()
     spaces = fill(pspace, (lattice.Nrows, lattice.Ncols))
 
-    onsite = Jz * sigma_z_sigma_z_op()
-
+    num = FO.f_num(T)
+    id_site = TensorKit.id(T, pspace)
+    onsite = Jz * (2 * num - id_site)
+    
     pp = FO.f_plus_f_plus(T)
     pm = FO.f_plus_f_min(T)
     mp = FO.f_min_f_plus(T)
@@ -32,9 +34,9 @@ function Kitaev_Hamiltonian(
     for (a, b) in nearest_neighbours(lattice)
         δ = b - a
         if δ == CartesianIndex(0, 1)
-            push!(bonds_x, (a, b))
+            push!(bonds_x, (b, a))
         elseif δ == CartesianIndex(1, 0)
-            push!(bonds_y, (b, a))
+            push!(bonds_y, (a, b))
         else
             throw(ArgumentError("Unexpected bond displacement $δ for InfiniteSquare lattice."))
         end

@@ -55,12 +55,8 @@ function energy_loss(params::Kitaev, bz::BrillouinZone2D)
         #= 
             qq-ordering of Majorana modes: (c_1, c_2, ..., c_(2(4Nv + Nf)))
         =#
-        # @inbounds E = 0.5 * (ξk_batched_summed - dot(ξk_batched, CM_out[:, 1, 2])) - 0.25 *(dot(Δk_batched, CM_out[:, 2, 1]) + dot(Δk_batched, CM_out[:, 1, 2])) - params.Jz * N
-        # @inbounds E = 0.5 * (ξk_batched_summed - dot(ξk_batched, real.(CM_out[:, 1, 2]))) + 0.5 * dot(Δk_batched, CM_out[:, 1, 2]) - params.Jz * N
         @inbounds E = 0.5 * (ξk_batched_summed - dot(ξk_batched, real.(CM_out[:, 1, 2]))) - 0.5 * dot(Δk_batched, imag.(CM_out[:, 1, 2])) - params.Jz * N
         return real(E  * invN)
-        # return CM_out[:, 1, 2]
-        # return E  * invN
     end
 
     return energy
