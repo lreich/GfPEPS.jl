@@ -403,6 +403,8 @@ function translate(X::AbstractMatrix, Nf::Int, Nv::Int)
     ω = (fuser_virtual ⊗ fuser_virtual) * ω
 
     @tensor A[-1; -2 -3 -4 -5] := conj(ω[1 -2]) * conj(ω[2 -3]) * fiducial_state[-1 1 2 -4 -5]
+
+    # return InfinitePEPS(A; unitcell = (1, 1))
     return PEPSKit.peps_normalize(InfinitePEPS(A; unitcell = (1, 1)))
     # return get_peps(ω, fiducial_state)
 end

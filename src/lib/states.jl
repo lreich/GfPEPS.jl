@@ -53,6 +53,7 @@ function virtual_bond_state(T::Type{<:Number}, Nv::Int)
     # MES for one pair of (a1_i, a2_i) on the bond
     # the resulting fermion order is (a1_1, a2_1, ..., a1_Λ, a2_Λ)
     ω = (1 / sqrt(2)) * (unit ⊗ unit + ff) * vac
+    # ω = (unit ⊗ unit + ff) * vac
     if Nv > 1
         # reorder fermions to (a1_1, ..., a1_Λ, a2_1, ..., a2_Λ)
         ω = reduce(⊗, fill(ω, Nv))
