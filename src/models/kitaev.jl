@@ -51,67 +51,81 @@ function Kitaev_Hamiltonian(
 end
 Kitaev_Hamiltonian(lattice::InfiniteSquare; gauge_field::String="vortex_free", Jx::Real = 1.0, Jy::Real = 1.0, Jz::Real = 1.0) = Kitaev_Hamiltonian(ComplexF64, lattice; gauge_field=gauge_field, Jx=Jx, Jy=Jy, Jz=Jz)
 
-function sigma_z_sigma_z_op(;lattice::InfiniteSquare=InfiniteSquare(1,1))
-    pspace = fermion_space()
-    spaces = fill(pspace, (lattice.Nrows, lattice.Ncols))
-
-    id_site = TensorKit.id(ComplexF64, pspace)
-    num = FO.f_num(ComplexF64)
-    onsite = 2 * num - id_site
-
-    return LocalOperator(
-        spaces,
-        ((site,) => onsite for site in vertices(lattice))...
-    )
-end
-
-function sigma_x_sigma_x_op(;lattice::InfiniteSquare=InfiniteSquare(1,1))
-    pspace = fermion_space()
-    spaces = fill(pspace, (lattice.Nrows, lattice.Ncols))
-
-    pp = FO.f_plus_f_plus(ComplexF64)
+function kitaev_two_point_correlator(r::Int, peps::InfinitePEPS, env::CTMRGEnv)
     pm = FO.f_plus_f_min(ComplexF64)
-    mp = FO.f_min_f_plus(ComplexF64)
-    mm = FO.f_min_f_min(ComplexF64)
-    base_link = pp - pm + mp - mm
 
-    bonds_x = Tuple{CartesianIndex, CartesianIndex}[]
-    for (a, b) in nearest_neighbours(lattice)
-        δ = b - a
-        if δ == CartesianIndex(0, 1)
-            push!(bonds_x, (a, b))
-        end
-    end
-
-    return LocalOperator(
-        spaces,
-        (bond => base_link for bond in bonds_x)...
+    corrh = correlator(
+        peps, pm, CartesianIndex(1, 1), CartesianIndex(1, 2):CartesianIndex(1, r), env
     )
+
+    corrv = correlator(
+        peps, pm, CartesianIndex(1, 1), CartesianIndex(2, 1):CartesianIndex(r, 1), env
+    )
+
+    return corrh,corrv
 end
 
-function sigma_y_sigma_y_op(;lattice::InfiniteSquare=InfiniteSquare(1,1))
-    pspace = fermion_space()
-    spaces = fill(pspace, (lattice.Nrows, lattice.Ncols))
+# function sigma_z_sigma_z_op(;lattice::InfiniteSquare=InfiniteSquare(1,1))
+#     pspace = fermion_space()
+#     spaces = fill(pspace, (lattice.Nrows, lattice.Ncols))
 
-    pp = FO.f_plus_f_plus(ComplexF64)
-    pm = FO.f_plus_f_min(ComplexF64)
-    mp = FO.f_min_f_plus(ComplexF64)
-    mm = FO.f_min_f_min(ComplexF64)
-    base_link = pp - pm + mp - mm
+#     id_site = TensorKit.id(ComplexF64, pspace)
+#     num = FO.f_num(ComplexF64)
+#     onsite = 2 * num - id_site
 
-    bonds_y = Tuple{CartesianIndex, CartesianIndex}[]
-    for (a, b) in nearest_neighbours(lattice)
-        δ = b - a
-        if δ == CartesianIndex(1, 0)
-            push!(bonds_y, (b, a))
-        end
-    end
+#     return LocalOperator(
+#         spaces,
+#         ((site,) => onsite for site in vertices(lattice))...
+#     )
+# end
 
-    return LocalOperator(
-        spaces,
-        (bond => base_link for bond in bonds_y)...
-    )
-end
+# function sigma_x_sigma_x_op(;lattice::InfiniteSquare=InfiniteSquare(1,1))
+#     pspace = fermion_space()
+#     spaces = fill(pspace, (lattice.Nrows, lattice.Ncols))
+
+#     pp = FO.f_plus_f_plus(ComplexF64)
+#     pm = FO.f_plus_f_min(ComplexF64)
+#     mp = FO.f_min_f_plus(ComplexF64)
+#     mm = FO.f_min_f_min(ComplexF64)
+#     base_link = pp - pm + mp - mm
+
+#     bonds_x = Tuple{CartesianIndex, CartesianIndex}[]
+#     for (a, b) in nearest_neighbours(lattice)
+#         δ = b - a
+#         if δ == CartesianIndex(0, 1)
+#             push!(bonds_x, (a, b))
+#         end
+#     end
+
+#     return LocalOperator(
+#         spaces,
+#         (bond => base_link for bond in bonds_x)...
+#     )
+# end
+
+# function sigma_y_sigma_y_op(;lattice::InfiniteSquare=InfiniteSquare(1,1))
+#     pspace = fermion_space()
+#     spaces = fill(pspace, (lattice.Nrows, lattice.Ncols))
+
+#     pp = FO.f_plus_f_plus(ComplexF64)
+#     pm = FO.f_plus_f_min(ComplexF64)
+#     mp = FO.f_min_f_plus(ComplexF64)
+#     mm = FO.f_min_f_min(ComplexF64)
+#     base_link = pp - pm + mp - mm
+
+#     bonds_y = Tuple{CartesianIndex, CartesianIndex}[]
+#     for (a, b) in nearest_neighbours(lattice)
+#         δ = b - a
+#         if δ == CartesianIndex(1, 0)
+#             push!(bonds_y, (b, a))
+#         end
+#     end
+
+#     return LocalOperator(
+#         spaces,
+#         (bond => base_link for bond in bonds_y)...
+#     )
+# end
 
 """
     ξ(k::AbstractVector{<:Real}, params::Kitaev)

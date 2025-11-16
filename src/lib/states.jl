@@ -1,9 +1,19 @@
 fermion_space() = Vect[fℤ₂](0 => 1, 1 => 1) # single fermion / Z2 graded space
 
 """
+    single_site_operator(T::Type{<:Number} = ComplexF64)
+
+Create the sceleton for single-site fermionic operators
+"""
+function single_site_operator(T)
+    V = fermion_space()
+    return zeros(T, V ← V)
+end
+
+"""
     two_site_operator(T::Type{<:Number} = ComplexF64)
 
-Create the vacuum state for `n` spinless fermions
+Create the sceleton for two-site fermionic operators
 """
 function two_site_operator(T::Type{<:Number} = ComplexF64)
     V = fermion_space()
