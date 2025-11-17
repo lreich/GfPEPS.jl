@@ -404,9 +404,12 @@ function translate(X::AbstractMatrix, Nf::Int, Nv::Int)
 
     @tensor A[-1; -2 -3 -4 -5] := conj(ω[1 -2]) * conj(ω[2 -3]) * fiducial_state[-1 1 2 -4 -5]
 
-    # return InfinitePEPS(A; unitcell = (1, 1))
-    return PEPSKit.peps_normalize(InfinitePEPS(A; unitcell = (1, 1)))
-    # return get_peps(ω, fiducial_state)
+    # normalize as projecting the virtual bonds needs normalization afterwards
+    peps = PEPSKit.peps_normalize(InfinitePEPS(A; unitcell = (1, 1)))
+
+    # symmetrize PEPS for drastically better CTMRG convergence (Only for square unit cells)
+    PEPSKit.symmetrize!(peps, RotateReflect())
+    return peps
 end
 
 function translate_occ_to_TM_dict(N)
