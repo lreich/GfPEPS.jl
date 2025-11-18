@@ -19,6 +19,8 @@ function BCS_spin_hamiltonian(
         Δy = Δx
     elseif pairing_type == "d_wave"
         Δy = -Δx
+    elseif pairing_type == "p_ip_wave"
+        Δy = im*Δx
     end
 
     pspace = hub.hubbard_space(Trivial, Trivial)
@@ -82,7 +84,7 @@ function Δ(k::AbstractVector{<:Real}, params::BCS)
 end
 
 Δ(::Val{:d_wave},k::AbstractVector{<:Real},Δ_0) = 2*Δ_0*(cos(k[1]) - cos(k[2]))
-Δ(::Val{:s_wave},k::AbstractVector{<:Real},Δ_0::Real) = 2*Δ_0
+Δ(::Val{:s_wave},k::AbstractVector{<:Real},Δ_0::Real) = 2*Δ_0 * (cos(k[1]) + cos(k[2]))
 Δ(::Val{:p_ip_wave},k::AbstractVector{<:Real},Δ_0::Real) = 2*Δ_0*(sin(k[1]) + im*sin(k[2]))
 function E(k::AbstractVector{<:Real}, params::BCS)
     return sqrt(ξ(k, params)^2 + abs(Δ(k, params))^2)
