@@ -17,19 +17,16 @@ params_Kitaev = GfPEPS.Kitaev(
     config["hamiltonian"]["Jz"],
 )
 
-peps = GfPEPS.translate(X_opt, config["params"]["N_physical_fermions_on_site"], config["params"]["N_virtual_fermions_on_bond"])
+peps = GfPEPS.translate(X_opt, config["params"]["N_physical_fermions_on_site"], config["params"]["N_virtual_fermions_on_bond"]; tol = 1e-8)
 
-χenv_max = 10
+χenv_max = 8
 boundary_alg = (; tol = 1e-8, maxiter=1000, alg = :simultaneous)
 env, = GfPEPS.initialize_ctmrg_env(peps, 4, χenv_max; boundary_alg...);
 
-# Espace = Vect[FermionParity](0 => χenv_max / 2, 1 => χenv_max / 2)
-# env0 = CTMRGEnv(peps, oneunit(space(peps.A[1],2)))
-# env1, = leading_boundary(env0, peps; alg = :sequential, trscheme = truncspace(Espace), maxiter = 5);
-# env, = leading_boundary(env1, peps; boundary_alg...);
-
 ham = GfPEPS.Kitaev_Hamiltonian(ComplexF64, InfiniteSquare(1, 1); Jx=params_Kitaev.Jx, Jy=params_Kitaev.Jy, Jz=params_Kitaev.Jz)
 energy1 = real(expectation_value(peps, ham, env))
+
+corrh, corrv, expect_f_dag, expect_f = GfPEPS.kitaev_two_point_correlator(5, peps, env)
 
 @show energy1
 @show optim_energy
