@@ -48,3 +48,35 @@ function rand_CM(Nf::Int, Nv::Int; parity::Int = 1)
         end
     end
 end
+
+#= PEPSKit helper =#
+
+function initialize_ctmrg_env(peps::InfinitePEPS, χ0::Int, χ::Int; kwargs...)
+    Espace = Vect[FermionParity](0 => χ0 ÷ 2, 1 => χ0 ÷ 2) 
+    env = CTMRGEnv(rand, ComplexF64, peps, Espace) 
+
+    χ_eff_array = begin
+        arr = [χ0]
+        while arr[end] < χ
+            push!(arr, min(arr[end] * 2, χ))
+        end
+
+        arr
+    end
+
+    info = nothing
+    for χ_eff in χ_eff_array 
+        @info "Growing environment to χ_eff = $χ_eff"
+        env, info = leading_boundary( 
+            env, peps; tol=1e-5, maxiter=500, alg= :simultaneous, trscheme = truncdim(χ_eff) 
+        ) 
+    end
+
+    # do last step with fixed space truncation
+    Espace = Vect[FermionParity](0 => χ÷2, 1 => χ÷2) 
+    env, info = leading_boundary( 
+        env, peps; kwargs..., trscheme = truncspace(Espace) 
+    )
+
+    return env, info
+end

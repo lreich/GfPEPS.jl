@@ -312,7 +312,7 @@ function translate_new(X::AbstractMatrix, Nf::Int, Nv::Int)
     return peps
 end
 
-function translate(X::AbstractMatrix, Nf::Int, Nv::Int)
+function translate(X::AbstractMatrix, Nf::Int, Nv::Int; tol=1e-10)
     Γ_fiduc = Γ_fiducial(X, Nv, Nf)
 
     H = get_parent_hamiltonian(Γ_fiduc, Nf, Nv)
@@ -392,6 +392,8 @@ function translate(X::AbstractMatrix, Nf::Int, Nv::Int)
             T[1,1,1,1,1] = pfaffian(Q_mat) / v_prod
         end
     end
+    # remove numerical noise for stability
+    T[abs.(T) .< tol] .= 0.0
 
     fiducial_state = TensorMap(T, codomain_space ← domain_space)
     ω = virtual_bond_state(Nv)
@@ -405,11 +407,7 @@ function translate(X::AbstractMatrix, Nf::Int, Nv::Int)
     @tensor A[-1; -2 -3 -4 -5] := conj(ω[1 -2]) * conj(ω[2 -3]) * fiducial_state[-1 1 2 -4 -5]
 
     # normalize as projecting the virtual bonds needs normalization afterwards
-    peps = PEPSKit.peps_normalize(InfinitePEPS(A; unitcell = (1, 1)))
-
-    # symmetrize PEPS for drastically better CTMRG convergence (Only for square unit cells)
-    PEPSKit.symmetrize!(peps, RotateReflect())
-    return peps
+    return PEPSKit.peps_normalize(InfinitePEPS(A; unitcell = (1, 1)))
 end
 
 function translate_occ_to_TM_dict(N)

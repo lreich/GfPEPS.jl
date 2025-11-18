@@ -19,12 +19,14 @@ params_Kitaev = GfPEPS.Kitaev(
 
 peps = GfPEPS.translate(X_opt, config["params"]["N_physical_fermions_on_site"], config["params"]["N_virtual_fermions_on_bond"])
 
-χenv_max = 12
-boundary_alg = (; tol = 1e-8, maxiter=1000, alg = :simultaneous, trscheme = FixedSpaceTruncation())
-Espace = Vect[FermionParity](0 => χenv_max / 2, 1 => χenv_max / 2)
-env0 = CTMRGEnv(peps, oneunit(space(peps.A[1],2)))
-env1, = leading_boundary(env0, peps; alg = :sequential, trscheme = truncspace(Espace), maxiter = 5);
-env, = leading_boundary(env1, peps; boundary_alg...);
+χenv_max = 10
+boundary_alg = (; tol = 1e-8, maxiter=1000, alg = :simultaneous)
+env, = GfPEPS.initialize_ctmrg_env(peps, 4, χenv_max; boundary_alg...);
+
+# Espace = Vect[FermionParity](0 => χenv_max / 2, 1 => χenv_max / 2)
+# env0 = CTMRGEnv(peps, oneunit(space(peps.A[1],2)))
+# env1, = leading_boundary(env0, peps; alg = :sequential, trscheme = truncspace(Espace), maxiter = 5);
+# env, = leading_boundary(env1, peps; boundary_alg...);
 
 ham = GfPEPS.Kitaev_Hamiltonian(ComplexF64, InfiniteSquare(1, 1); Jx=params_Kitaev.Jx, Jy=params_Kitaev.Jy, Jz=params_Kitaev.Jz)
 energy1 = real(expectation_value(peps, ham, env))
