@@ -264,39 +264,65 @@ matches the target doping `δ_target`.
 function solve_for_fugacity(
         peps::InfinitePEPS,
         δ_target::Real;
-        z_range::NTuple{2, Float64} = (0.0, 1.0),
         χ_env_max::Int = 20,
         atol::Float64=1e-5,
+        z_initial::Union{Nothing, Float64}=nothing,
+        env_init::Union{Nothing, CTMRGEnv}=nothing
     )
 
     function get_env(peps::InfinitePEPS; env_init::Union{Nothing, CTMRGEnv}=nothing)
-        boundary_alg = (; tol = 1e-8, maxiter = 500, alg = :simultaneous, trscheme = FixedSpaceTruncation())
+        boundary_alg = (; tol = 1e-8, maxiter = 500, alg = :simultaneous)
         Espace = Vect[FermionParity](0 => χ_env_max / 2, 1 => χ_env_max / 2)
 
         if env_init === nothing
-            env0 = CTMRGEnv(peps, oneunit(space(peps.A[1],2)))
-            env1, = leading_boundary(env0, peps; alg = :sequential, trscheme = truncspace(Espace), maxiter = 5)
-            env, = leading_boundary(env1, peps; boundary_alg...);
+            χ0 = min(6, χ_env_max)
+
+            Espace = Vect[FermionParity](0 => χ0 ÷ 2, 1 => χ0 ÷ 2) 
+            env = CTMRGEnv(rand, ComplexF64, peps, Espace) 
+
+            χ_eff_array = begin
+                arr = [χ0]
+                while arr[end] < χ_env_max
+                    push!(arr, min(arr[end] * 2, χ_env_max))
+                end
+
+                arr
+            end
+
+            for χ_eff in χ_eff_array 
+                @info "Growing environment to χ_eff = $χ_eff"
+                env, _ = leading_boundary( 
+                    env, peps; tol=1e-5, maxiter=500, alg= :simultaneous, trscheme = truncdim(χ_eff) 
+                ) 
+            end
+
+            # do last step with fixed space truncation
+            Espace = Vect[FermionParity](0 => χ_env_max ÷ 2, 1 => χ_env_max ÷ 2) 
+            env, _ = leading_boundary( 
+                env, peps; boundary_alg..., trscheme = truncspace(Espace) 
+            )
+            # env0 = CTMRGEnv(peps, oneunit(space(peps.A[1],2)))
+            # env1, = leading_boundary(env0, peps; alg = :sequential, trscheme = truncspace(Espace), maxiter = 5)
+            # env, = leading_boundary(env1, peps; boundary_alg...);
             return env;
         else
-            env, = leading_boundary(env_init, peps; boundary_alg...);
+            Espace = Vect[FermionParity](0 => χ_env_max ÷ 2, 1 => χ_env_max ÷ 2) 
+            env, = leading_boundary(env_init, peps; boundary_alg..., trscheme = truncspace(Espace));
             return env;
         end
     end
 
     # build initial environment
-    z_init = 2δ_target/(1+δ_target)
+    z_init = isnothing(z_initial) ? 2δ_target/(1+δ_target) : z_initial
     peps_projected = gutzwiller_project(z_init, peps)
-    env_init = get_env(peps_projected)
+    env_init = get_env(peps_projected; env_init=env_init)
 
     function mismatch(z)
         peps_projected = gutzwiller_project(z, peps)
         env_init = get_env(peps_projected; env_init=env_init)
-        # env_projected = _build_env_for_fugacity(build_env, projected, env_ref[])
-        # env_ref[] = env_projected
         δ_projected = doping_pepsGW(peps_projected, env_init)
         return δ_target - δ_projected
     end
 
-    return find_zero(mismatch, z_range; atol=atol), env_init
+    return find_zero(mismatch, z_init; atol=atol), env_init
 end
