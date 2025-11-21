@@ -26,6 +26,8 @@ env, = GfPEPS.initialize_ctmrg_env(peps, 4, χenv_max; boundary_alg...);
 ham = GfPEPS.Kitaev_Hamiltonian(ComplexF64, InfiniteSquare(1, 1); Jx=params_Kitaev.Jx, Jy=params_Kitaev.Jy, Jz=params_Kitaev.Jz)
 energy1 = real(expectation_value(peps, ham, env))
 
+corrh, corrv, expect_f_dag, expect_f = GfPEPS.kitaev_two_point_correlator(5, peps, env)
+
 @show energy1
 @show optim_energy
 @test energy1 ≈ optim_energy atol=2e-2 # depends on Nv
