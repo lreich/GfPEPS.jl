@@ -172,10 +172,10 @@ end
 
 Checks if there are Dirac points (zero-energy modes) in the energy spectrum over the Brillouin zone `bz`.
 """
-function has_dirac_points(bz::BrillouinZone2D, params::Kitaev)
+function has_dirac_points(bz::BrillouinZone2D, params::Kitaev; tol=1e-6)
     dirac_point_found = false
     for k in eachcol(bz.kvals)
-        if isapprox(E(k, params), 0.0; atol = 1e-6)
+        if isapprox(E(k, params), 0.0; atol = tol)
             @warn ("Dirac point found at k = $k. This may lead to convergence issues during optimization.")
             dirac_point_found = true
         end

@@ -2,7 +2,7 @@
     "params":{
         "N_physical_fermions_on_site": 1,
         "N_virtual_fermions_on_bond": 2,
-        "seed": 1234,
+        "seed": 2025,
         "maxiter": 1000,
         "grad_tol": 1e-8,
         "f_reltol": 1e-10,
@@ -10,12 +10,13 @@
     },
 
     "system_params":{
-        "Lx": 12,
-        "Ly": 12,
-        "x_bc": "APBC",
+        "Lx": 60,
+        "Ly": 60,
+        "x_bc": "PBC",
         "y_bc": "APBC",
         "lattice_type": "square",
-        "parity": 1
+        "parity": 1,
+        "dirac_point_tol": 1e-4
     },
 
     "hamiltonian":{

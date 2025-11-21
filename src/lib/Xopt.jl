@@ -126,7 +126,9 @@ function get_X_opt(Nf::Int, Nv::Int, params::Union{BCS,Kitaev};
     λ::Float64 = 1e2, # initial penalty parameter for hole density constraint
     Lx::Int = 6, 
     Ly::Int = 6,
-    bc::Tuple{Symbol, Symbol}=(:APBC, :PBC),
+    Lx_init::Int = 4,
+    Ly_init::Int = 4,
+    bc::Tuple{Symbol, Symbol}=(:APBC, :APBC),
     parity::Int = 1, # 1 for even, -1 for odd
     maxiter::Int=500,
     show_trace::Bool=false,
@@ -136,6 +138,7 @@ function get_X_opt(Nf::Int, Nv::Int, params::Union{BCS,Kitaev};
     density_tol::Float64=1.0e-6,
     density_outer_iters::Int=8,
     penalty_growth::Float64=10.0,
+    dirac_point_tol::Float64=1e-4,
     X_init::Union{AbstractMatrix, Nothing}=nothing
     )
 
@@ -155,7 +158,7 @@ function get_X_opt(Nf::Int, Nv::Int, params::Union{BCS,Kitaev};
 
     # construct Brillouin zone
     bz = BrillouinZone2D(Lx,Ly,bc)
-    # has_dirac_points(bz,params) # warn if dirac points are present
+    has_dirac_points(bz,params; tol=dirac_point_tol) # warn if dirac points are present
 
     if solve_μ_from_δ && params isa BCS
         μ = solve_for_mu(bz, δ, params.t, params.pairing_type, params.Δ_0)
@@ -163,19 +166,20 @@ function get_X_opt(Nf::Int, Nv::Int, params::Union{BCS,Kitaev};
     end
 
     # smaller system size for initial optimization to find better starting point
-    L_init_even = 6
-    L_init_odd = 5
+    Lx_init_even = iseven(Lx) ? Lx_init : Lx_init + 1
+    Lx_init_odd = isodd(Lx) ? Lx_init : Lx_init + 1
     Lx_inits = begin
-        if Lx > L_init_even && isnothing(X_init)
-            [isodd(Lx) ? L_init_odd : L_init_even]
+        if Lx > Lx_init_even && isnothing(X_init)
+            [isodd(Lx) ? Lx_init_odd : Lx_init_even]
         else
             []
         end
     end
-    # Lx_inits = [(isodd(Lx) && Lx > L_init_even) ? L_init_odd : L_init_even]
+    Ly_init_even = iseven(Ly) ? Ly_init : Ly_init + 1
+    Ly_init_odd = isodd(Ly) ? Ly_init : Ly_init + 1
     Ly_inits = begin
-        if Ly > L_init_even && isnothing(X_init)
-            [isodd(Ly) ? L_init_odd : L_init_even]
+        if Ly > Ly_init_even && isnothing(X_init)
+            [isodd(Ly) ? Ly_init_odd : Ly_init_even]
         else
             []
         end
@@ -217,7 +221,7 @@ function get_X_opt(Nf::Int, Nv::Int, params::Union{BCS,Kitaev};
         @info "Optimize X for: Lx = $(Lx_init), Ly = $(Ly_init)"
 
         bz_init = BrillouinZone2D(Lx_init, Ly_init, bc)
-        # has_dirac_points(bz_init, params)
+        has_dirac_points(bz_init, params; tol=dirac_point_tol)
 
         loss_init_no_dens = optimize_loss(bz_init, Nf, Nv, params)
         doping_fn_init = enforce_density ?  X_mat -> doping_bcs(X_mat, bz_init, Nf, Nv) : nothing
@@ -333,6 +337,8 @@ function get_X_opt(;conf::Dict=parsefile(joinpath(GfPEPS.config_path, "conf_BCS_
         λ = get(get(conf, "hamiltonian", Dict()), "lagrange_multiplier_density", 1e2),
         Lx = conf["system_params"]["Lx"],
         Ly = conf["system_params"]["Ly"],
+        Lx_init = get(get(conf, "system_params", Dict()), "Lx_init", 4),
+        Ly_init = get(get(conf, "system_params", Dict()), "Ly_init", 4),
         bc = (Symbol(conf["system_params"]["x_bc"]), Symbol(conf["system_params"]["y_bc"])),
         parity = get(get(conf, "system_params", Dict()), "parity", 1),
         maxiter = get(get(conf, "params", Dict()), "maxiter", 1000),
@@ -343,6 +349,7 @@ function get_X_opt(;conf::Dict=parsefile(joinpath(GfPEPS.config_path, "conf_BCS_
         density_tol =  get(get(conf, "hamiltonian", Dict()), "density_tol", 1e-6),
         density_outer_iters = get(get(conf, "hamiltonian", Dict()), "density_outer_iters", 10),
         penalty_growth = get(get(conf, "hamiltonian", Dict()), "penalty_growth", 1e1),
+        dirac_point_tol = get(get(conf, "params", Dict()), "dirac_point_tol", 1e-4),
         X_init = X_init
     )
 end
