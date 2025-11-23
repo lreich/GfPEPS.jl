@@ -40,6 +40,7 @@ include("lib/Xopt.jl")
 
 include("models/bcs_spin.jl")
 include("models/kitaev.jl")
+include("models/tj_model.jl")
 
 include("exports.jl") # export functions
 

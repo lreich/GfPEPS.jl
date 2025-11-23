@@ -68,14 +68,14 @@ function initialize_ctmrg_env(peps::InfinitePEPS, χ0::Int, χ::Int; kwargs...)
     for χ_eff in χ_eff_array 
         @info "Growing environment to χ_eff = $χ_eff"
         env, info = leading_boundary( 
-            env, peps; tol=1e-5, maxiter=500, alg= :simultaneous, trscheme = truncdim(χ_eff) 
+            env, peps; tol=1e-5, maxiter=500, alg= :simultaneous, trunc = truncdim(χ_eff) 
         ) 
     end
 
     # do last step with fixed space truncation
     Espace = Vect[FermionParity](0 => χ÷2, 1 => χ÷2) 
     env, info = leading_boundary( 
-        env, peps; kwargs..., trscheme = truncspace(Espace) 
+        env, peps; kwargs..., trunc = truncspace(Espace) 
     )
 
     return env, info

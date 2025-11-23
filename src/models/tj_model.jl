@@ -27,3 +27,48 @@ function tj_model_NNN(
         (neighbor => h_NNN for neighbor in PEPSKit.next_nearest_neighbours(lattice))...,
     )
 end
+
+"""
+    find_optimal_Δ(t::Real, J::Real, δ_target::Real; pairing_type::String="d_wave")
+
+Returns the optimal gap parameter Δ for the t-J model at given hopping amplitude `t`, exchange interaction `J`, and target doping `δ_target`, assuming a specified pairing symmetry.:
+
+# Keyword arguments
+- `t::Real`: Hopping amplitude
+- `J::Real`: Exchange interaction
+- `δ_target::Real`: Target doping level
+- `bz::BrillouinZone2D`: Brillouin zone
+
+# Optional arguments
+- `pairing_type::String="d_wave"`: Choose from:
+    - d_wave
+    - s_wave
+"""
+function find_optimal_Δ(t::Real, J::Real, δ_target::Real, bz::BrillouinZone2D; pairing_type::String="d_wave")
+    # Gutzwiller approximation factors
+    gt = 2*δ_target/(1+δ_target)
+    gs = 4/(1+δ_target)^2
+
+    t = gt * t
+
+    function loss(x)
+        Δ_eff = gs*J*x[1]
+
+        μ = solve_for_mu(bz, δ_target, t, pairing_type, Δ_eff; μ_range=(-10.0, 10.0))
+
+        params = BCS(t, μ, pairing_type, Δ_eff)
+
+        return exact_energy(params,bz) + 2*gs*J*x[1]^2
+    end
+
+    Δ_min = 1e-10
+    Δ_max = 10.0
+    # res = Optim.optimize(loss, [Δ_min, Δ_max], Optim.NelderMead(), Optim.Options(
+            # iterations = 100,
+            # g_tol = 1e-6,
+            # show_trace = true,
+            # f_reltol = 1e-6))
+    res = Optim.optimize(loss, Δ_min, Δ_max, Brent())
+
+    return Optim.minimizer(res)[1]
+end

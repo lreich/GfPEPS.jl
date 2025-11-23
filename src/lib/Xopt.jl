@@ -303,7 +303,7 @@ function get_X_opt(Nf::Int, Nv::Int, params::Union{BCS,Kitaev};
     return X_opt, optim_energy, E_exact, info_obj
 end
 
-function get_X_opt(;conf::Dict=parsefile(joinpath(GfPEPS.config_path, "conf_BCS_d_wave.json")), X_init::Union{AbstractMatrix, Nothing}=nothing) 
+function get_X_opt(;conf=parsefile(joinpath(GfPEPS.config_path, "conf_BCS_d_wave.json")), X_init::Union{AbstractMatrix, Nothing}=nothing) 
     params = begin
         if conf["hamiltonian"]["type"] == "BCS"
             BCS(
