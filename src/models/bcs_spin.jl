@@ -292,22 +292,22 @@ function solve_for_fugacity(
             for χ_eff in χ_eff_array 
                 @info "Growing environment to χ_eff = $χ_eff"
                 env, _ = leading_boundary( 
-                    env, peps; tol=1e-5, maxiter=500, alg= :simultaneous, trscheme = truncdim(χ_eff) 
+                    env, peps; tol=1e-5, maxiter=500, alg= :simultaneous, trunc = truncdim(χ_eff) 
                 ) 
             end
 
             # do last step with fixed space truncation
             Espace = Vect[FermionParity](0 => χ_env_max ÷ 2, 1 => χ_env_max ÷ 2) 
             env, _ = leading_boundary( 
-                env, peps; boundary_alg..., trscheme = truncspace(Espace) 
+                env, peps; boundary_alg..., trunc = truncspace(Espace) 
             )
             # env0 = CTMRGEnv(peps, oneunit(space(peps.A[1],2)))
-            # env1, = leading_boundary(env0, peps; alg = :sequential, trscheme = truncspace(Espace), maxiter = 5)
+            # env1, = leading_boundary(env0, peps; alg = :sequential, trunc = truncspace(Espace), maxiter = 5)
             # env, = leading_boundary(env1, peps; boundary_alg...);
             return env;
         else
             Espace = Vect[FermionParity](0 => χ_env_max ÷ 2, 1 => χ_env_max ÷ 2) 
-            env, = leading_boundary(env_init, peps; boundary_alg..., trscheme = truncspace(Espace));
+            env, = leading_boundary(env_init, peps; boundary_alg..., trunc = truncspace(Espace));
             return env;
         end
     end
