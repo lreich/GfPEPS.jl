@@ -28,6 +28,41 @@ function tj_model_NNN(
     )
 end
 
+function tj_model_with_doping(
+    T::Type{<:Number},
+    particle_symmetry::Type{<:Sector},
+    spin_symmetry::Type{<:Sector},
+    lattice::InfiniteSquare;
+    t=2.5,
+    J=1.0,
+    λ=1.0,
+    δ_target=0.0,
+    slave_fermion::Bool=false,
+)
+    hopping =
+        TJOperators.e_plusmin(particle_symmetry, spin_symmetry; slave_fermion) +
+        TJOperators.e_minplus(particle_symmetry, spin_symmetry; slave_fermion)
+    num = TJOperators.e_number(particle_symmetry, spin_symmetry; slave_fermion)
+    heis =
+        TJOperators.S_exchange(particle_symmetry, spin_symmetry; slave_fermion) -
+        (1 / 4) * (num ⊗ num)
+    pspace = space(num, 1)
+    unit = TensorKit.id(pspace)
+
+    # Total number operator on the bond (ni + nj)
+    density = num ⊗ unit + unit ⊗ num
+
+    # Target number of particles on the bond (2 * (1 - δ_target)) multiplied by the identity operator.
+    # Factor of 2 because there are two sites on the bond.
+    target_bond_number_operator = (2 * (1.0 - δ_target)) * (unit ⊗ unit)
+
+    h = (-t) * hopping + J * heis + λ * (density - target_bond_number_operator)^2
+    if T <: Real
+        h = real(h)
+    end
+    return PEPSKit.nearest_neighbour_hamiltonian(fill(pspace, size(lattice)), h)
+end
+
 """
     find_optimal_Δ(t::Real, J::Real, δ_target::Real; pairing_type::String="d_wave")
 
