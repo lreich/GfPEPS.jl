@@ -49,14 +49,13 @@ function tj_model_with_doping(
     pspace = space(num, 1)
     unit = TensorKit.id(pspace)
 
-    # Total number operator on the bond (ni + nj)
-    density = num ⊗ unit + unit ⊗ num
+     # Average doping (hole density) on the bond: 1 - (ni + nj) / 2
+    doping = unit ⊗ unit - (num ⊗ unit + unit ⊗ num) / 2
 
-    # Target number of particles on the bond (2 * (1 - δ_target)) multiplied by the identity operator.
     # Factor of 2 because there are two sites on the bond.
-    target_bond_number_operator = (2 * (1.0 - δ_target)) * (unit ⊗ unit)
+    doping_target = δ_target * (unit ⊗ unit)
 
-    h = (-t) * hopping + J * heis + λ * (density - target_bond_number_operator)^2
+    h = (-t) * hopping + J * heis + λ * (doping - doping_target)^2
     if T <: Real
         h = real(h)
     end
