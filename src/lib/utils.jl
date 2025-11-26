@@ -80,3 +80,26 @@ function initialize_ctmrg_env(peps::InfinitePEPS, χ0::Int, χ::Int; kwargs...)
 
     return env, info
 end
+
+function init_ctmrg_env(peps)
+    trivialspace = ProductSpace{GradedSpace{FermionParity, Tuple{Int64, Int64}}, 0}()
+
+    corner_space = Vect[FermionParity](0 => 1, 1 => 1)
+
+    C_ul = TensorMap([1.0], corner_space ← corner_space)
+    C_dr = TensorMap([1.0], corner_space ← corner_space)
+    C_dl = TensorMap([1.0], trivialspace ← corner_space ⊗ corner_space)
+    C_ur = TensorMap([1.0], corner_space ⊗ corner_space ← trivialspace)
+
+    χ_B = TensorKit.dim(domain(loc[i])[1])
+
+    space_loc_l = codomain(loc[i])[1]
+    space_loc_d = codomain(loc[i])[2]
+    space_loc_r = domain(loc[i])[1]
+    space_loc_u = domain(loc[i])[2]
+
+    Tr_l = TensorMap(Matrix(1.0I,dim_loc_l,dim_loc_l), space_type^1 ← (space_loc_l)' ⊗ space_loc_l ⊗ space_type^1)
+    Tr_d = TensorMap(Matrix(1.0I,dim_loc_d,dim_loc_d), space_type^1 ← space_type^1 ⊗ (space_loc_d)' ⊗ space_loc_d)
+    Tr_r = TensorMap(Matrix(1.0I,dim_loc_r,dim_loc_r), (space_loc_r)' ⊗ space_loc_r ⊗ space_type^1 ← space_type^1)
+    Tr_u = TensorMap(Matrix(1.0I,dim_loc_u,dim_loc_u), space_type^1 ⊗ (space_loc_u)' ⊗ space_loc_u ← space_type^1)
+end

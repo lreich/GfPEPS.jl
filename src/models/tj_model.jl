@@ -29,6 +29,40 @@ function tj_model_NNN(
 end
 
 function tj_model_with_doping(
+        T::Type{<:Number}, particle_symmetry::Type{<:Sector}, spin_symmetry::Type{<:Sector},
+        lattice::InfiniteSquare;
+        t = 2.5, J = 1.0, mu = 0.0, slave_fermion::Bool = false, n::Integer =0,
+    )
+    hopping =
+        TJOperators.e_plusmin(particle_symmetry, spin_symmetry; slave_fermion) +
+        TJOperators.e_minplus(particle_symmetry, spin_symmetry; slave_fermion)
+    num = TJOperators.e_number(particle_symmetry, spin_symmetry; slave_fermion)
+    heis =
+        TJOperators.S_exchange(particle_symmetry, spin_symmetry; slave_fermion) -
+        (1 / 4) * (num ⊗ num)
+    pspace = space(num, 1)
+    unit = TensorKit.id(pspace)
+    h = (-t) * hopping + J * heis - (mu / 4) * (num ⊗ unit + unit ⊗ num)
+    if T <: Real
+        h = real(h)
+    end
+    spaces = fill(pspace, (lattice.Nrows, lattice.Ncols))
+    H = nearest_neighbour_hamiltonian(spaces, h)
+
+    if particle_symmetry === Trivial
+        iszero(n) || throw(ArgumentError("imposing particle number requires `U₁` symmetry"))
+    elseif particle_symmetry === U1Irrep
+        isinteger(2n) ||
+            throw(ArgumentError("`U₁` symmetry requires halfinteger particle number"))
+        H = MPSKit.add_physical_charge(H, fill(U1Irrep(n), size(spaces)...))
+    else
+        throw(ArgumentError("symmetry not implemented"))
+    end
+
+    return H
+end
+
+function tj_model_with_doping_old(
     T::Type{<:Number},
     particle_symmetry::Type{<:Sector},
     spin_symmetry::Type{<:Sector},
