@@ -20,8 +20,9 @@ params_Kitaev = GfPEPS.Kitaev(
 peps = GfPEPS.translate(X_opt, config["params"]["N_physical_fermions_on_site"], config["params"]["N_virtual_fermions_on_bond"]; tol = 1e-8);
 
 χenv_max = 20
-boundary_alg = (; tol = 1e-8, maxiter=1000, alg = :simultaneous)
-env, = GfPEPS.initialize_ctmrg_env(peps, 4, χenv_max; boundary_alg...);
+boundary_alg = (; tol = 1e-8, maxiter=500, alg = :simultaneous)
+env = GfPEPS.init_ctmrg_env(peps);
+env, _ = GfPEPS.grow_env(peps, env, 4, χenv_max; boundary_alg...);
 
 ham = GfPEPS.Kitaev_Hamiltonian(ComplexF64, InfiniteSquare(1, 1); Jx=params_Kitaev.Jx, Jy=params_Kitaev.Jy, Jz=params_Kitaev.Jz)
 energy1 = real(expectation_value(peps, ham, env))

@@ -20,6 +20,7 @@ using PEPSKit
 using MPSKitModels.TJOperators
 import TensorKitTensors.HubbardOperators as hub
 import TensorKitTensors.FermionOperators as FO
+import TensorKitTensors.TJOperators as tJ
 
 const V = FO.fermion_space()
 const unit = TensorKit.id(V)

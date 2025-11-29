@@ -17,7 +17,7 @@ using JSON: parsefile
         μ_from_δ = GfPEPS.solve_for_mu(bz, config["hamiltonian"]["hole_density"], config["hamiltonian"]["t"], config["hamiltonian"]["pairing_type"], config["hamiltonian"]["Δ_0"])
 
         χenv_max = 12
-        boundary_alg = (; tol = 1e-8, maxiter=100, alg = :simultaneous, trscheme = FixedSpaceTruncation())
+        boundary_alg = (; tol = 1e-8, maxiter=100, alg = :simultaneous)
         Espace = Vect[FermionParity](0 => χenv_max / 2, 1 => χenv_max / 2)
         env0 = CTMRGEnv(peps, oneunit(space(peps.A[1],2)))
         env1, = leading_boundary(env0, peps; alg = :sequential, trscheme = truncspace(Espace), maxiter = 5)

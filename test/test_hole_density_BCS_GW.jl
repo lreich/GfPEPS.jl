@@ -19,12 +19,10 @@ using JSON: parsefile
     GfPEPS.doping_bcs(X_opt, bz, config["params"]["N_physical_fermions_on_site"], config["params"]["N_virtual_fermions_on_bond"])
 
     χ_env_max = config["PEPSKit"]["χ_env_max"]
-    Espace = Vect[FermionParity](0 => χ_env_max / 2, 1 => χ_env_max / 2)
-    boundary_alg = (; tol = config["PEPSKit"]["tol"], maxiter = config["PEPSKit"]["maxiter"], alg = :simultaneous, trscheme = FixedSpaceTruncation())
+    boundary_alg = (; tol = config["PEPSKit"]["tol"], maxiter = config["PEPSKit"]["maxiter"], alg = :simultaneous)
 
-    env0 = CTMRGEnv(peps, oneunit(space(peps.A[1],2)))
-    env1, = leading_boundary(env0, peps; alg = :sequential, trscheme = truncspace(Espace), maxiter = 5)
-    env, = leading_boundary(env1, peps; boundary_alg...);
+    env = GfPEPS.init_ctmrg_env(peps);
+    env, _ = GfPEPS.grow_env(peps, env, 6, χ_env_max; boundary_alg...);
 
     δ_PEPS = GfPEPS.doping_peps(peps,env)
 

@@ -276,34 +276,9 @@ function solve_for_fugacity(
 
         if env_init === nothing
             χ0 = min(6, χ_env_max)
+            env = init_ctmrg_env(peps);
+            env, _ = grow_env(peps, env, χ0, χ_env_max; boundary_alg...);
 
-            Espace = Vect[FermionParity](0 => χ0 ÷ 2, 1 => χ0 ÷ 2) 
-            env = CTMRGEnv(rand, ComplexF64, peps, Espace) 
-
-            χ_eff_array = begin
-                arr = [χ0]
-                while arr[end] < χ_env_max
-                    push!(arr, min(arr[end] * 2, χ_env_max))
-                end
-
-                arr
-            end
-
-            for χ_eff in χ_eff_array 
-                @info "Growing environment to χ_eff = $χ_eff"
-                env, _ = leading_boundary( 
-                    env, peps; tol=1e-5, maxiter=500, alg= :simultaneous, trunc = truncdim(χ_eff) 
-                ) 
-            end
-
-            # do last step with fixed space truncation
-            Espace = Vect[FermionParity](0 => χ_env_max ÷ 2, 1 => χ_env_max ÷ 2) 
-            env, _ = leading_boundary( 
-                env, peps; boundary_alg..., trunc = truncspace(Espace) 
-            )
-            # env0 = CTMRGEnv(peps, oneunit(space(peps.A[1],2)))
-            # env1, = leading_boundary(env0, peps; alg = :sequential, trunc = truncspace(Espace), maxiter = 5)
-            # env, = leading_boundary(env1, peps; boundary_alg...);
             return env;
         else
             Espace = Vect[FermionParity](0 => χ_env_max ÷ 2, 1 => χ_env_max ÷ 2) 

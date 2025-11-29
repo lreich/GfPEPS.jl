@@ -18,11 +18,10 @@ using Random
     peps = GfPEPS.translate(X, Nf, Nv);
 
     χenv_max = 8
-    boundary_alg = (; tol = 1e-8, maxiter=100, alg = :simultaneous, trscheme = FixedSpaceTruncation())
-    Espace = Vect[FermionParity](0 => χenv_max / 2, 1 => χenv_max / 2)
-    env0 = CTMRGEnv(peps, oneunit(space(peps.A[1],2)))
-    env1, = leading_boundary(env0, peps; alg = :sequential, trscheme = truncspace(Espace), maxiter = 5)
-    env, = leading_boundary(env1, peps; boundary_alg...)
+    boundary_alg = (; tol = 1e-8, maxiter=100, alg = :simultaneous)
+    
+    env = GfPEPS.init_ctmrg_env(peps);
+    env, _ = GfPEPS.grow_env(peps, env, 4, χenv_max; boundary_alg...)
 
     t = 1.0
     pairing_type = "d_wave"
