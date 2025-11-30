@@ -15,14 +15,6 @@ function energy_loss(params::BCS, bz::BrillouinZone2D)
     invN = 1.0 / size(k_vals, 2) # actually faster when precomputed, because multiplication is faster than division
 
     function energy(CM_out::AbstractArray)
-        # #= 
-        #     qp-ordering of Majorana modes: (c_1, c_3, ..., c_(2(4Nv + Nf)-1), c_2, c_4, ..., c_(2(4Nv + Nf)))
-        # =#
-        # G13, G24, G14, G32, G34, G12 = CM_out[:, 1, 3], CM_out[:, 2, 4], CM_out[:, 1, 4], CM_out[:, 3, 2], CM_out[:, 3, 4], CM_out[:, 1, 2]
-        # η = 0.25 .* (G14 .+ G32 .+ im .* (G34 .- G12))
-        # @inbounds E = ξk_batched_summed - 0.5*(dot(ξk_batched, G13) + dot(ξk_batched, G24)) + 2*real(dot(Δk_batched, η))
-        # return real(E * invN)
-
         #= 
             qq-ordering of Majorana modes: (c_1, c_2, ..., c_(2(4Nv + Nf)))
         =#

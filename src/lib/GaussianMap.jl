@@ -10,11 +10,6 @@ helper(k) = [  0   e^{i k} * σ_x
 """
 function helper(k::Real)
     σ_x = [0 1; 1 0]
-    # return [zeros(2,2) -cis(k)*σ_x;
-    #         cis(k)*σ_x zeros(2,2)] # Kraus thesis convention (qq-ordering, lrud)
-
-    # return [zeros(2,2) cis(k)*σ_x;
-    #         -conj(cis(k))*σ_x zeros(2,2)] # (rldu) Hong hao paper convention (qq-ordering, l_1,r_1...l_Nv,r_Nv,u_1,d_1...u_Nv,d_Nv)
 
     return [zeros(2,2) -conj(cis(k))*σ_x;
             cis(k)*σ_x zeros(2,2)] # Hackenbroich 2010 (lrud) (lrdu)
@@ -32,7 +27,6 @@ G_in_single_k(k, Nv) = [⊕_{i=1}^{Nv} G_in_single_k(kx)] ⊕ [⊕_{i=1}^{Nv} G_
 """
 function G_in_single_k(k::AbstractVector{<:Real}, Nv::Integer)
     return Matrix(BlockDiagonal([⊕(helper(k[1]), Nv),⊕(helper(k[2]), Nv)]))
-    # return Matrix(BlockDiagonal([⊕(helper(k[1]), Nv),⊕(helper(-k[2]), Nv)]))
 end
 
 """
@@ -83,7 +77,6 @@ Note:
 - Γ_fiducial is either given in Fourier space or real space, depending on X
 """
 function Γ_fiducial(X::AbstractMatrix, Nv::Int, Nf::Int)
-    # return transpose(X) * ⊕([0.0 1.0; -1.0 0.0],4*Nv+2) * X
     Γ = transpose(X) * build_J(Nv,Nf) * X
 
     return (Γ - transpose(Γ)) / 2 # ensure exact antisymmetry
@@ -114,16 +107,11 @@ Note:
 
 """
 function GaussianMap(A::AbstractMatrix, B::AbstractMatrix, D::AbstractMatrix, CM_in::AbstractArray)
-    # get block matrices from CM_out (=Γ_fiducial)
-    # A = CM_out[1:2*Nf, 1:2*Nf]
-    # B = CM_out[1:2*Nf, 2*Nf+1:end]
-    # D = CM_out[2*Nf+1:end, 2*Nf+1:end]
     Bt = transpose(B)
 
     # Gaussian map for each (kx,ky)
     # mats = map(s -> B * ((D .- s) \ transpose(B)) .+ A, eachslice(CM_in; dims=1)) # Kraus thesis
     mats = map(s -> B * ((D .+ s) \ Bt) .+ A, eachslice(CM_in; dims=1)) # Hong hao paper
-    # return cat(mats...; dims=3) |> x -> permutedims(x, (3,1,2))
     return permutedims(stack(mats, dims=3), (3,1,2))
 end
 
