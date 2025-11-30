@@ -252,7 +252,6 @@ function doping_pepsGW(peps::InfinitePEPS, env::CTMRGEnv)
 
     # Get unit cell dimensions
     Nx, Ny = size(peps.A)
-    @show Nx, Ny
 
     # Initialize total density accumulator
     total_density = 0.0
