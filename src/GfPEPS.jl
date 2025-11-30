@@ -16,6 +16,7 @@ using Roots
 
 using SparseArrays: sparse, blockdiag, spdiagm
 using TensorKit
+using MPSKit
 using PEPSKit
 using MPSKitModels.TJOperators
 import TensorKitTensors.HubbardOperators as hub

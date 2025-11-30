@@ -23,6 +23,10 @@ export Gaussian_fPEPS
 export BCS
 export Kitaev
 
+#= export utils functions =#
+export init_ctmrg_env
+export grow_env
+
 #= export global variables =#
 const root = normpath(joinpath(@__DIR__, ".."))
 const config_path = joinpath(root, "conf")

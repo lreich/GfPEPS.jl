@@ -47,14 +47,14 @@ function tj_model_with_doping(
         h = real(h)
     end
     spaces = fill(pspace, (lattice.Nrows, lattice.Ncols))
-    H = nearest_neighbour_hamiltonian(spaces, h)
+    H = PEPSKit.nearest_neighbour_hamiltonian(spaces, h)
 
     if particle_symmetry === Trivial
         iszero(n) || throw(ArgumentError("imposing particle number requires `U₁` symmetry"))
     elseif particle_symmetry === U1Irrep
-        isinteger(2n) ||
-            throw(ArgumentError("`U₁` symmetry requires halfinteger particle number"))
-        H = MPSKit.add_physical_charge(H, fill(U1Irrep(n), size(spaces)...))
+        full_charge_sector = fℤ₂(0) ⊠ U1Irrep(n)
+
+        H = MPSKit.add_physical_charge(H, fill(full_charge_sector, size(spaces)...))
     else
         throw(ArgumentError("symmetry not implemented"))
     end

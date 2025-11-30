@@ -250,9 +250,31 @@ function doping_pepsGW(peps::InfinitePEPS, env::CTMRGEnv)
         return t
     end
 
-    lattice = collect(space(t, 1) for t in peps.A)
-    O = LocalOperator(lattice, ((1, 1),) => e_num_GW(V))
-    return 1 - real(expectation_value(peps, O, env))
+    # Get unit cell dimensions
+    Nx, Ny = size(peps.A)
+    @show Nx, Ny
+
+    # Initialize total density accumulator
+    total_density = 0.0
+    
+    # Loop over every site in the unit cell
+    for r in 1:Nx, c in 1:Ny
+        # Construct the operator specifically for site (r, c)
+        lattice_site_space = space(peps.A[r, c], 1) 
+        O = LocalOperator(space.(peps.A, 1), ((r, c),) => e_num_GW(lattice_site_space))
+        
+        # Accumulate the expectation value
+        total_density += real(expectation_value(peps, O, env))
+    end
+
+    # Average density = Sum / Number of sites
+    avg_density = total_density / (Nx * Ny)
+
+    return 1 - avg_density
+
+    # lattice = collect(space(t, 1) for t in peps.A)
+    # O = LocalOperator(lattice, ((1, 1),) => e_num_GW(V))
+    # return 1 - real(expectation_value(peps, O, env))
 end
 
 """
