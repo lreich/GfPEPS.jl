@@ -35,7 +35,7 @@ end
 Returns the Fourier transformed (F) covariance matrix of all the virtual bonds: G_in = F Γ_in F†
 
 """
-function G_in_Fourier(bz::BrillouinZone2D, Nv::Int)
+function G_in_Fourier_single_uc(bz::BrillouinZone2D, Nv::Int)
     kvals = bz.kvals
 
     res = Array{ComplexF64,3}(undef, size(kvals,2), 8*Nv, 8*Nv)
@@ -44,6 +44,20 @@ function G_in_Fourier(bz::BrillouinZone2D, Nv::Int)
     end
     return res
 end
+
+
+function G_in_Fourier(bz::BrillouinZone2D, Nv::Int, unitcell::Tuple{Int,Int})
+    kvals = bz.kvals
+
+    Nv_eff = Nv * unitcell[1] * unitcell[2]
+    
+    res = Array{ComplexF64,3}(undef, size(kvals,2), 8*Nv, 8*Nv)
+    for (i, col) in enumerate(eachcol(kvals))
+        res[i, :, :] = G_in_single_k(col, Nv)
+    end
+    return res
+end
+
 
 #= Correlation matrix function for the fiducial state (G_out / Γ_out) =#
 
