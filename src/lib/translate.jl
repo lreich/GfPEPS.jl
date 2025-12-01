@@ -100,7 +100,7 @@ Input axis order
         4                   1
 ```
 """
-function translate(X::AbstractMatrix, Nf::Int, Nv::Int; tol=1e-10)
+function translate(X::AbstractMatrix, Nf::Int, Nv::Int; tol=1e-10, unitcell = (1,1))
     Γ_fiduc = Γ_fiducial(X, Nv, Nf)
 
     H = get_parent_hamiltonian(Γ_fiduc, Nf, Nv)
@@ -182,7 +182,7 @@ function translate(X::AbstractMatrix, Nf::Int, Nv::Int; tol=1e-10)
     @tensor A[-1; -2 -3 -4 -5] := conj(ω[1 -2]) * conj(ω[2 -3]) * fiducial_state[-1 1 2 -4 -5]
 
     # normalize as projecting the virtual bonds needs normalization afterwards
-    return PEPSKit.peps_normalize(InfinitePEPS(A; unitcell = (1, 1)))
+    return PEPSKit.peps_normalize(InfinitePEPS(A; unitcell = unitcell))
 end
 
 function translate_occ_to_TM_dict(N)

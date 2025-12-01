@@ -213,20 +213,41 @@ function gutzwiller_projector(z::Float64)
 end
 
 """
-Apply Gutzwiller projection to Hubbard (spin-1/2) PEPS
+Apply Gutzwiller projection to (spin-1/2) PEPS to every site in the unit cell.
 """
 function gutzwiller_project(z::Float64, peps::InfinitePEPS)
     P = gutzwiller_projector(z)
-    return InfinitePEPS(collect(P * t for t in peps.A))
+    pepsGW = InfinitePEPS(collect(P * t for t in peps.A))
+    return PEPSKit.peps_normalize(pepsGW)
 end
 
 """
     doping_peps(peps::InfinitePEPS, env::CTMRGEnv)
 
 The average doping `δ = 1 - (1/N) ∑_i ⟨f†_{iσ} f_{iσ}⟩`
-evaluated from the GfPEPS tensor.
+evaluated from the GfPEPS iPEPS tensor.
 """
 function doping_peps(peps::InfinitePEPS, env::CTMRGEnv)
+    # Get unit cell dimensions
+    Nx, Ny = size(peps.A)
+
+    # Initialize total density accumulator
+    total_density = 0.0
+
+    # Loop over every site in the unit cell
+    for r in 1:Nx, c in 1:Ny
+        # Construct the operator specifically for site (r, c)
+        O = LocalOperator(space.(peps.A, 1), ((r, c),) => hub.e_num(Trivial, Trivial))
+        
+        # Accumulate the expectation value
+        total_density += real(expectation_value(peps, O, env))
+    end
+
+    # Average density = Sum / Number of sites
+    avg_density = total_density / (Nx * Ny)
+
+    return 1 - avg_density
+
     lattice = collect(space(t, 1) for t in peps.A)
     O = LocalOperator(lattice, ((1, 1),) => hub.e_num(Trivial, Trivial))
     return 1 - real(expectation_value(peps, O, env))
@@ -270,10 +291,6 @@ function doping_pepsGW(peps::InfinitePEPS, env::CTMRGEnv)
     avg_density = total_density / (Nx * Ny)
 
     return 1 - avg_density
-
-    # lattice = collect(space(t, 1) for t in peps.A)
-    # O = LocalOperator(lattice, ((1, 1),) => e_num_GW(V))
-    # return 1 - real(expectation_value(peps, O, env))
 end
 
 """
@@ -321,4 +338,5 @@ function solve_for_fugacity(
     end
 
     return find_zero(mismatch, z_init; atol=atol), env_init
+    # return find_zero(mismatch, (0.0, 1.0); atol=atol), env_init
 end

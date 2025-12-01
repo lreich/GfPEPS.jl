@@ -3,23 +3,22 @@ const DEFAULT_PENALTY_FALLBACK = 1.0
 """
         optimize_stage_with_density(loss_energy, doping_fn, X_init; kwargs...)
 
-Run one optimization stage on the Stiefel manifold using an augmented Lagrangian
-to simultaneously minimize the energy (given by `loss_energy`) and enforce a
+Run one optimization stage on the Stiefel manifold and minimize the energy (given by `loss_energy`) and enforce a
 target hole density. When `enforce_density` is false the routine solves the
 unconstrained problem to obtain the best energy-only optimum.
 
 Arguments
 ---------
 - `loss_energy`: Scalar-valued objective returning the mean energy for a given `X`.
-- `doping_fn`: Callback that reports the hole density associated with `X`.
-- `X_init`: Starting point for the manifold optimizer.
+- `doping_fn`: function to compute the doping from `X`.
+- `X_init`: Starting point.
 - `δ`: Desired hole density.
-- `λ`: Initial penalty parameter for the augmented Lagrangian.
-- `density_tol`: Acceptable absolute tolerance on the density constraint.
+- `λ`: Initial penalty parameter for the augmented loss function.
+- `density_tol`: Absolute tolerance on the density constraint.
 - `penalty_growth`: Factor controlling how aggressively the penalty grows when
     the constraint is violated.
-- `outer_iters`: Number of outer augmented-Lagrangian updates.
-- `enforce_density`: Toggle to switch between constrained and unconstrained modes.
+- `outer_iters`: Number of outer augmented-loss function updates.
+- `enforce_density`: If set to false, no density constraint is enforced.
 
 Returns the optimized `X`, the `Optim` result struct, and the final hole density.
 """
