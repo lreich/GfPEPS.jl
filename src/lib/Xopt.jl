@@ -154,7 +154,7 @@ function get_X_opt(Nf::Int, Nv::Int, params::Union{BCS,Kitaev};
 
     # construct Brillouin zone
     bz = BrillouinZone2D(Lx,Ly,bc)
-    # has_dirac_points(bz,params) # warn if dirac points are present
+    has_dirac_points(bz,params) # warn if dirac points are present
 
     if solve_μ_from_δ && params isa BCS
         μ = solve_for_mu(bz, δ, params.t, params.pairing_type, params.Δ_0)
@@ -216,7 +216,7 @@ function get_X_opt(Nf::Int, Nv::Int, params::Union{BCS,Kitaev};
         @info "Optimize X for: Lx = $(Lx_init), Ly = $(Ly_init)"
 
         bz_init = BrillouinZone2D(Lx_init, Ly_init, bc)
-        # has_dirac_points(bz_init, params)
+        has_dirac_points(bz_init, params)
 
         loss_init_no_dens = optimize_loss(bz_init, Nf, Nv, params)
         doping_fn_init = enforce_density ?  X_mat -> doping_bcs(X_mat, bz_init, Nf, Nv) : nothing
