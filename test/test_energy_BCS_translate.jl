@@ -1,6 +1,7 @@
 using Revise
 using Test
 using GfPEPS
+using PEPSKit
 using JSON: parsefile
 
 @testset "Energy BCS" begin
@@ -18,10 +19,8 @@ using JSON: parsefile
 
         χenv_max = 12
         boundary_alg = (; tol = 1e-8, maxiter=100, alg = :simultaneous)
-        Espace = Vect[FermionParity](0 => χenv_max / 2, 1 => χenv_max / 2)
-        env0 = CTMRGEnv(peps, oneunit(space(peps.A[1],2)))
-        env1, = leading_boundary(env0, peps; alg = :sequential, trscheme = truncspace(Espace), maxiter = 5)
-        env, = leading_boundary(env1, peps; boundary_alg...)
+        env = init_ctmrg_env(peps)
+        env, _ = grow_env(peps, env, 4, χenv_max; boundary_alg...)
 
         H = GfPEPS.BCS_spin_hamiltonian(ComplexF64, InfiniteSquare(1, 1); pairing_type = config["hamiltonian"]["pairing_type"], t=config["hamiltonian"]["t"], Δ_0 = config["hamiltonian"]["Δ_0"], μ = μ_from_δ)
         energy_peps = real(expectation_value(peps, H, env))
