@@ -35,7 +35,7 @@ end
 Returns the Fourier transformed (F) covariance matrix of all the virtual bonds: G_in = F Γ_in F†
 
 """
-function G_in_Fourier_single_uc(bz::BrillouinZone2D, Nv::Int)
+function G_in_Fourier(bz::BrillouinZone2D, Nv::Int)
     kvals = bz.kvals
 
     res = Array{ComplexF64,3}(undef, size(kvals,2), 8*Nv, 8*Nv)
@@ -45,18 +45,69 @@ function G_in_Fourier_single_uc(bz::BrillouinZone2D, Nv::Int)
     return res
 end
 
+
+function G_k_x(k::AbstractVector{<:Real}, unitcell::Tuple{Int,Int})
+    Nv_eff_x = Nv * unitcell[1]
+    Nv_eff_y = Nv * unitcell[2]
+    
+    # 
+
+    # σ_x (e^{i k} - 1)
+    function helper(k::Real)
+        σ_x = [0 1; 1 0]
+
+        return [zeros(2,2) (cis(k)-1)*σ_x;
+                (1 - cis(k))*σ_x zeros(2,2)]
+    end
+
+    return Matrix(BlockDiagonal([⊕(helper(k[1]), Nv),⊕(helper(k[2]), Nv)]))
+end
 
 function G_in_Fourier(bz::BrillouinZone2D, Nv::Int, unitcell::Tuple{Int,Int})
     kvals = bz.kvals
+    N_uc = unitcell[1] * unitcell[2] # number of sites in the unit cell
 
-    Nv_eff = Nv * unitcell[1] * unitcell[2]
-    
-    res = Array{ComplexF64,3}(undef, size(kvals,2), 8*Nv, 8*Nv)
+    function helper()
+        σ_x = [0 1; 1 0]
+
+        return [zeros(2,2) -σ_x;
+                σ_x zeros(2,2)]
+    end
+
+    function G_in_single_k(k::AbstractVector{<:Real}, Nv::Integer)
+
+
+        # return Matrix(BlockDiagonal([⊕(helper(k[1]), Nv),⊕(helper(k[2]), Nv)]))
+    end
+
+    res = Array{ComplexF64,3}(undef, size(kvals,2), 8*Nv*N_uc, 8*Nv*N_uc)
     for (i, col) in enumerate(eachcol(kvals))
         res[i, :, :] = G_in_single_k(col, Nv)
     end
     return res
 end
+
+using LinearAlgebra
+using BlockDiagonals
+using GfPEPS
+
+# unitcell = (5,2)
+unitcell = (1,1)
+N_uc = unitcell[1] * unitcell[2]
+Nv = 2
+N = 8 * Nv * N_uc
+G = spdiagm(2 => -1 .* ones(N-2), 4 => -1 .* ones(N-4), 
+            -2 => 1 .* ones(N-2), -4 => 1 .* ones(N-4))
+
+
+
+# unitcell = (5,2)
+# N_uc = unitcell[1] * unitcell[2]
+# σ_x = [0 1; 1 0]
+# M = [zeros(2,2) -σ_x;
+#     σ_x zeros(2,2)]
+# Nv = 2
+# BlockDiagonal([⊕(M, Nv),⊕(M, Nv)])
 
 
 #= Correlation matrix function for the fiducial state (G_out / Γ_out) =#
