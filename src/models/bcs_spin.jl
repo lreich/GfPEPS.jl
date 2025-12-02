@@ -233,24 +233,23 @@ function doping_peps(peps::InfinitePEPS, env::CTMRGEnv)
 
     # Initialize total density accumulator
     total_density = 0.0
-
+    
     # Loop over every site in the unit cell
+    density_distribution = zeros(Float64, Nx, Ny)
     for r in 1:Nx, c in 1:Ny
         # Construct the operator specifically for site (r, c)
         O = LocalOperator(space.(peps.A, 1), ((r, c),) => hub.e_num(Trivial, Trivial))
-        
+        exp_val = real(expectation_value(peps, O, env))
+
+        density_distribution[r, c] = 1 - exp_val
         # Accumulate the expectation value
-        total_density += real(expectation_value(peps, O, env))
+        total_density += exp_val
     end
 
     # Average density = Sum / Number of sites
     avg_density = total_density / (Nx * Ny)
 
-    return 1 - avg_density
-
-    lattice = collect(space(t, 1) for t in peps.A)
-    O = LocalOperator(lattice, ((1, 1),) => hub.e_num(Trivial, Trivial))
-    return 1 - real(expectation_value(peps, O, env))
+    return 1 - avg_density, density_distribution
 end
 
 """
@@ -278,19 +277,22 @@ function doping_pepsGW(peps::InfinitePEPS, env::CTMRGEnv)
     total_density = 0.0
     
     # Loop over every site in the unit cell
+    density_distribution = zeros(Float64, Nx, Ny)
     for r in 1:Nx, c in 1:Ny
         # Construct the operator specifically for site (r, c)
         lattice_site_space = space(peps.A[r, c], 1) 
         O = LocalOperator(space.(peps.A, 1), ((r, c),) => e_num_GW(lattice_site_space))
-        
+        exp_val = real(expectation_value(peps, O, env))
+
+        density_distribution[r, c] = 1 - exp_val
         # Accumulate the expectation value
-        total_density += real(expectation_value(peps, O, env))
+        total_density += exp_val
     end
 
     # Average density = Sum / Number of sites
     avg_density = total_density / (Nx * Ny)
 
-    return 1 - avg_density
+    return 1 - avg_density, density_distribution
 end
 
 """
@@ -333,7 +335,7 @@ function solve_for_fugacity(
     function mismatch(z)
         peps_projected = gutzwiller_project(z, peps)
         env_init = get_env(peps_projected; env_init=env_init)
-        δ_projected = doping_pepsGW(peps_projected, env_init)
+        δ_projected, _ = doping_pepsGW(peps_projected, env_init)
         return δ_target - δ_projected
     end
 
