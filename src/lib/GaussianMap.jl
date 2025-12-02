@@ -11,8 +11,8 @@ helper(k) = [  0   e^{i k} * σ_x
 function helper(k::Real)
     σ_x = [0 1; 1 0]
 
-    return [zeros(2,2) -conj(cis(k))*σ_x;
-            cis(k)*σ_x zeros(2,2)] # Hackenbroich 2010 (lrud) (lrdu)
+    return [zeros(2,2) -cis(k)*σ_x;
+            conj(cis(k))*σ_x zeros(2,2)] # Hackenbroich 2010 (lrud) (lrdu)
 end
 
 """
@@ -26,7 +26,7 @@ G_in_single_k(k, Nv) = [⊕_{i=1}^{Nv} G_in_single_k(kx)] ⊕ [⊕_{i=1}^{Nv} G_
 
 """
 function G_in_single_k(k::AbstractVector{<:Real}, Nv::Integer)
-    return Matrix(BlockDiagonal([⊕(helper(k[1]), Nv),⊕(helper(-k[2]), Nv)]))
+    return Matrix(BlockDiagonal([⊕(helper(k[1]), Nv),⊕(helper(k[2]), Nv)]))
 end
 
 """

@@ -2,7 +2,7 @@
     "params":{
         "N_physical_fermions_on_site": 1,
         "N_virtual_fermions_on_bond": 2,
-        "seed": 8612651,
+        "seed": 8465168546,
         "maxiter": 1000,
         "grad_tol": 1e-8,
         "f_reltol": 1e-10,
