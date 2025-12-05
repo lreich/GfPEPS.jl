@@ -176,15 +176,5 @@ function flip_spin(mat, peps)
         peps.A[r, c] = S_flip * peps.A[r, c]
     end
 
-    return peps
-
-    # Nx, Ny = size(peps.A)
-    # for r in 1:Nx, c in 1:Ny
-    #     A = peps.A[r, c]
-    #     # Define the spin-flip operator
-    #     S_flip = tJ.S_x(Trivial, Trivial)
-    #     # Apply the spin-flip operator to the physical index
-    #     peps.A[r, c] = apply_local_operator(A, S_flip, 1)
-    # end
-    # return peps
+    return PEPSKit.peps_normalize(peps)
 end
