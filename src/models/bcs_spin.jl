@@ -222,6 +222,25 @@ function gutzwiller_project(z::Float64, peps::InfinitePEPS)
 end
 
 """
+Apply custom Gutzwiller projection to (spin-1/2) PEPS to the corresponding site in the unit cell determined by `z::Matrix{Float64}`.
+`z` is a matrix of size equal to the unit cell size of `peps`,
+where each element is the fugacity to be applied to the corresponding site in the unit cell.
+"""
+function gutzwiller_project(z::Matrix{Float64}, peps::InfinitePEPS)
+    @assert size(z) == size(peps.A) "Size of fugacity matrix z must match the unit cell size of peps."
+
+    for r in 1:size(peps.A, 1), c in 1:size(peps.A, 2)
+        P = gutzwiller_projector(z[r, c])
+        peps.A[r, c] = P * peps.A[r, c]
+    end
+
+    return PEPSKit.peps_normalize(peps)
+    # P = gutzwiller_projector(z)
+    # pepsGW = InfinitePEPS(collect(P * t for t in peps.A))
+    # return PEPSKit.peps_normalize(pepsGW)
+end
+
+"""
     doping_peps(peps::InfinitePEPS, env::CTMRGEnv)
 
 The average doping `δ = 1 - (1/N) ∑_i ⟨f†_{iσ} f_{iσ}⟩`
