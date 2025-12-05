@@ -140,3 +140,51 @@ function find_optimal_Δ(t::Real, J::Real, δ_target::Real, bz::BrillouinZone2D;
 
     return Optim.minimizer(res)[1]
 end
+
+function measure_Sz(peps, env)
+    # Get unit cell dimensions
+    Nx, Ny = size(peps.A)
+    
+    magn_distribution = zeros(Float64, Nx, Ny)
+    total_magn = 0.0
+    for r in 1:Nx, c in 1:Ny
+        # Construct the operator specifically for site (r, c)
+        O = LocalOperator(space.(peps.A, 1), ((r, c),) => (tJ.u_num(Trivial, Trivial) - tJ.d_num(Trivial, Trivial)))
+        exp_val = real(expectation_value(peps, O, env))
+
+        magn_distribution[r, c] = exp_val / 2
+        # Accumulate the expectation value
+        total_magn += exp_val / 2
+    end
+
+    return total_magn, magn_distribution
+end
+
+""" 
+    flip_spin(mat, peps)
+Flip the spin on the sites where `mat[r, c] != 0`.
+"""
+function flip_spin(mat, peps)
+    @assert size(mat) == size(peps.A)
+
+    for r in 1:size(peps.A, 1), c in 1:size(peps.A, 2)
+        if mat[r, c] == 0
+            continue
+        end
+
+        S_flip = tJ.S_x(Trivial, Trivial)
+        peps.A[r, c] = S_flip * peps.A[r, c]
+    end
+
+    return peps
+
+    # Nx, Ny = size(peps.A)
+    # for r in 1:Nx, c in 1:Ny
+    #     A = peps.A[r, c]
+    #     # Define the spin-flip operator
+    #     S_flip = tJ.S_x(Trivial, Trivial)
+    #     # Apply the spin-flip operator to the physical index
+    #     peps.A[r, c] = apply_local_operator(A, S_flip, 1)
+    # end
+    # return peps
+end
