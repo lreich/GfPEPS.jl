@@ -164,7 +164,7 @@ end
     flip_spin(mat, peps)
 Flip the spin on the sites where `mat[r, c] != 0`.
 """
-function flip_spin(mat, peps)
+function flip_spins_tJ(mat, peps)
     @assert size(mat) == size(peps.A)
 
     for r in 1:size(peps.A, 1), c in 1:size(peps.A, 2)
@@ -172,8 +172,23 @@ function flip_spin(mat, peps)
             continue
         end
 
-        S_flip = tJ.S_x(Trivial, Trivial)
-        peps.A[r, c] = S_flip * peps.A[r, c]
+        T = peps.A[r, c]
+        P = codomain(T)[1] 
+        U = TensorMap(zeros, eltype(T), P, P)
+        
+        # identity block for even parity sector
+        b_even = block(U, FermionParity(0))
+        b_even[1,1] = 1.0
+
+        # swap block for odd parity sector
+        b_odd = block(U, FermionParity(1))
+        b_odd[1,2] = 1.0
+        b_odd[2,1] = 1.0
+
+        peps.A[r, c] = U * T
+
+        # S_flip = hub.S_x(Trivial, Trivial)
+        # peps.A[r, c] = S_flip * peps.A[r, c]
     end
 
     return PEPSKit.peps_normalize(peps)

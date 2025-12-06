@@ -78,6 +78,8 @@ function Δ(k::AbstractVector{<:Real}, params::BCS)
         return Δ(Val(:s_wave), k, params.Δ_0)
     elseif params.pairing_type == "p_ip_wave"
         return Δ(Val(:p_ip_wave), k, params.Δ_0)
+    elseif params.pairing_type == "s_d_wave"
+        return Δ(Val(:s_d_wave), k, params.Δ_0, params.Δ_02)
     else
         throw(ArgumentError("Unsupported pairing_type $(params.pairing_type) for BCS parameters"))
     end
@@ -86,6 +88,8 @@ end
 Δ(::Val{:d_wave},k::AbstractVector{<:Real},Δ_0) = 2*Δ_0*(cos(k[1]) - cos(k[2]))
 Δ(::Val{:s_wave},k::AbstractVector{<:Real},Δ_0::Real) = 2*Δ_0 * (cos(k[1]) + cos(k[2]))
 Δ(::Val{:p_ip_wave},k::AbstractVector{<:Real},Δ_0::Real) = 2*Δ_0*(sin(k[1]) + im*sin(k[2]))
+Δ(::Val{:s_d_wave},k::AbstractVector{<:Real},Δ_d::Real,Δ_s::Real) = Δ(Val(:d_wave), k, Δ_d) + Δ(Val(:s_wave), k, Δ_s)
+
 function E(k::AbstractVector{<:Real}, params::BCS)
     return sqrt(ξ(k, params)^2 + abs(Δ(k, params))^2)
 end
