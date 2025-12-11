@@ -186,9 +186,6 @@ function flip_spins_tJ(mat, peps)
         b_odd[2,1] = 1.0
 
         peps.A[r, c] = U * T
-
-        # S_flip = hub.S_x(Trivial, Trivial)
-        # peps.A[r, c] = S_flip * peps.A[r, c]
     end
 
     return PEPSKit.peps_normalize(peps)
