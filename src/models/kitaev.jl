@@ -34,9 +34,9 @@ function Kitaev_Hamiltonian(
     for (a, b) in nearest_neighbours(lattice)
         δ = b - a
         if δ == CartesianIndex(0, 1)
-            push!(bonds_x, (b, a))
+            push!(bonds_x, (a, b))
         elseif δ == CartesianIndex(1, 0)
-            push!(bonds_y, (a, b))
+            push!(bonds_y, (b, a))
         else
             throw(ArgumentError("Unexpected bond displacement $δ for InfiniteSquare lattice."))
         end

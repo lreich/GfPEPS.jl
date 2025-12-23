@@ -23,7 +23,7 @@ using JSON: parsefile
 
     env = GfPEPS.init_ctmrg_env(peps);
     env, _ = GfPEPS.grow_env(peps, env, 6, χ_env_max; boundary_alg...);
-    δ_PEPS = GfPEPS.doping_peps(peps,env)
+    δ_PEPS, _ = GfPEPS.doping_peps(peps,env)
 
     # find fugacity z such that doping after projection matches target doping
     δ = config["hamiltonian"]["hole_density"]
@@ -32,7 +32,7 @@ using JSON: parsefile
     PG = GfPEPS.gutzwiller_projector(z)
     peps_projected = GfPEPS.gutzwiller_project(z,peps)
 
-    δ_PEPS_projected = GfPEPS.doping_pepsGW(peps_projected,env_projected)
+    δ_PEPS_projected, _ = GfPEPS.doping_pepsGW(peps_projected,env_projected)
 
     @test δ_PEPS_projected ≈ δ_PEPS atol=δ_atol
 end;
@@ -51,7 +51,7 @@ end;
 
     env = GfPEPS.init_ctmrg_env(peps);
     env, _ = GfPEPS.grow_env(peps, env, 6, χ_env_max; boundary_alg...);
-    δ_PEPS = GfPEPS.doping_peps(peps,env)
+    δ_PEPS, _ = GfPEPS.doping_peps(peps,env)
 
     # find fugacity z such that doping after projection matches target doping
     δ = config["hamiltonian"]["hole_density"]
@@ -60,7 +60,7 @@ end;
     PG = GfPEPS.gutzwiller_projector(z)
     peps_projected = GfPEPS.gutzwiller_project(z,peps)
 
-    δ_PEPS_projected = GfPEPS.doping_pepsGW(peps_projected,env_projected)
+    δ_PEPS_projected, _ = GfPEPS.doping_pepsGW(peps_projected,env_projected)
 
     @test δ_PEPS_projected ≈ δ_PEPS atol=δ_atol
 end;

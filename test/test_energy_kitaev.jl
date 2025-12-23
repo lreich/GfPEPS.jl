@@ -3,7 +3,6 @@ using Test
 using GfPEPS
 using JSON: parsefile
 using Random
-using TensorKit
 using PEPSKit
 
 config = parsefile(joinpath(GfPEPS.test_config_path, "conf_test_kitaev.json"))
@@ -17,10 +16,10 @@ params_Kitaev = GfPEPS.Kitaev(
     config["hamiltonian"]["Jz"],
 )
 
-peps = GfPEPS.translate(X_opt, config["params"]["N_physical_fermions_on_site"], config["params"]["N_virtual_fermions_on_bond"]; tol = 1e-8);
+peps = GfPEPS.translate(X_opt, config["params"]["N_physical_fermions_on_site"], config["params"]["N_virtual_fermions_on_bond"]);
 
-χenv_max = 20
-boundary_alg = (; tol = 1e-8, maxiter=500, alg = :simultaneous)
+χenv_max = 8
+boundary_alg = (; tol = 1e-8, maxiter=1000, alg = :simultaneous)
 env = GfPEPS.init_ctmrg_env(peps);
 env, _ = GfPEPS.grow_env(peps, env, 4, χenv_max; boundary_alg...);
 

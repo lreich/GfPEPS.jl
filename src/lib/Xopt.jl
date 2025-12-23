@@ -309,7 +309,8 @@ function get_X_opt(;conf=parsefile(joinpath(GfPEPS.config_path, "conf_BCS_d_wave
                 conf["hamiltonian"]["t"],
                 conf["hamiltonian"]["μ"],
                 conf["hamiltonian"]["pairing_type"],
-                conf["hamiltonian"]["Δ_0"]
+                conf["hamiltonian"]["Δ_0"],
+                get(get(conf, "params", Dict()), "Δ_02", 0.0)
             )
         elseif conf["hamiltonian"]["type"] == "Kitaev"
             Kitaev(

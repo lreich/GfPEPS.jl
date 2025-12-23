@@ -140,3 +140,53 @@ function find_optimal_Δ(t::Real, J::Real, δ_target::Real, bz::BrillouinZone2D;
 
     return Optim.minimizer(res)[1]
 end
+
+function measure_Sz(peps, env)
+    # Get unit cell dimensions
+    Nx, Ny = size(peps.A)
+    
+    magn_distribution = zeros(Float64, Nx, Ny)
+    total_magn = 0.0
+    for r in 1:Nx, c in 1:Ny
+        # Construct the operator specifically for site (r, c)
+        O = LocalOperator(space.(peps.A, 1), ((r, c),) => (tJ.u_num(Trivial, Trivial) - tJ.d_num(Trivial, Trivial)))
+        exp_val = real(expectation_value(peps, O, env))
+
+        magn_distribution[r, c] = exp_val / 2
+        # Accumulate the expectation value
+        total_magn += exp_val / 2
+    end
+
+    return total_magn, magn_distribution
+end
+
+""" 
+    flip_spin(mat, peps)
+Flip the spin on the sites where `mat[r, c] != 0`.
+"""
+function flip_spins_tJ(mat, peps)
+    @assert size(mat) == size(peps.A)
+
+    for r in 1:size(peps.A, 1), c in 1:size(peps.A, 2)
+        if mat[r, c] == 0
+            continue
+        end
+
+        T = peps.A[r, c]
+        P = codomain(T)[1] 
+        U = TensorMap(zeros, eltype(T), P, P)
+        
+        # identity block for even parity sector
+        b_even = block(U, FermionParity(0))
+        b_even[1,1] = 1.0
+
+        # swap block for odd parity sector
+        b_odd = block(U, FermionParity(1))
+        b_odd[1,2] = 1.0
+        b_odd[2,1] = 1.0
+
+        peps.A[r, c] = U * T
+    end
+
+    return PEPSKit.peps_normalize(peps)
+end
