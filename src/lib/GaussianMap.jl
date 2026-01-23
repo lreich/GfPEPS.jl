@@ -170,6 +170,8 @@ Note:
 - CM_out must be a real antisymmetric matrix, i.e., CM_out² = -I
 - The covariance matrices are currently only Fourier transformed TODO: also do for real space / no translation inv systems
 
+Nv = Λ
+
 """
 function GaussianMap(A::AbstractMatrix, B::AbstractMatrix, D::AbstractMatrix, CM_in::AbstractArray)
     Bt = transpose(B)
