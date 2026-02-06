@@ -1,4 +1,7 @@
-<img width="400" height="400" alt="GfPEPS_with_Gutzwiller_projector" src="https://github.com/user-attachments/assets/4ddf386a-b150-45fc-969e-2f46b3b4fcf9" />
+<!-- <img width="400" height="400" alt="GfPEPS_with_Gutzwiller_projector" src="https://github.com/user-attachments/assets/4ddf386a-b150-45fc-969e-2f46b3b4fcf9" /> -->
+
+<!-- <img width="8000" height="400" alt="GfPEPS_with_Gutzwiller_projector" src="https://github.com/user-attachments/assets/01ae8a70-3b76-4df2-89ac-c4824a8b7242" /> -->
+<img width="2000" height="400" alt="GfPEPS_with_Gutzwiller_projector" src="https://github.com/user-attachments/assets/a2d804b4-15df-434e-a74d-bc40ea559f52" />
 
 # GfPEPS.jl
 A julia package for creating **Gaussian fermionic Projected Entangled Pair States (GfPEPS)**, built on top of the [TensorKit.jl](https://github.com/QuantumKitHub/TensorKit.jl) framework.
